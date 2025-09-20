@@ -5,9 +5,9 @@ import { chapters } from '../chapters.config';
 import { buildLocalePath } from '@/i18n/path';
 import InViewFade from '@/components/animation/InViewFade';
 import ElegantCard from '@/components/ui/ElegantCard';
-import MiniBar from '@/components/charts/MiniBar';
 import MiniDonut from '@/components/charts/MiniDonut';
-import MiniSparkline from '@/components/charts/MiniSparkline';
+import MiniBarChart from '@/components/chapters/timeline/MiniBarChart';
+import LineChartAnimated from '@/components/charts/LineChartAnimated';
 import { KPI_ANIM_DURATION, KPI_BAR_HEIGHT, KPI_SPARK_HEIGHT, KPI_DONUT_CLASS, getKpiDelay } from '@/components/charts/kpiAnimation';
 import SectionCard from '@components/chapters/SectionCard';
 import TableSimple from '@/components/ui/TableSimple';
@@ -70,7 +70,7 @@ export default async function TechnologyPage() {
   return (
     <div className="space-y-6">
       <div className="prose prose-sm max-w-none [font-feature-settings:'ss01','ss02','liga','clig','tnum']">
-        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong] text-[clamp(18px,2vw,22px)]">{chapterTitle}</h1>
+        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong]">{chapterTitle}</h1>
 
         {/* KPI-Stat-Karten (Technology) – tech-spezifisch */}
         <div className="not-prose mt-6 grid gap-4 md:gap-5 sm:grid-cols-2 lg:grid-cols-4 items-stretch">
@@ -110,26 +110,35 @@ export default async function TechnologyPage() {
                         className={KPI_DONUT_CLASS}
                       />
                     ) : s.key === 'latency' ? (
-                      <MiniBar
-                        data={[14, 12, 11, 10, 9]}
+                      <MiniBarChart
+                        series={[14, 12, 11, 10, 9]}
+                        height={110}
                         color="#f59e0b"
-                        bg="rgba(245,158,11,0.12)"
-                        delay={getKpiDelay(idx)}
-                        duration={KPI_ANIM_DURATION}
-                        className="w-full"
-                        height={KPI_BAR_HEIGHT}
+                        ariaLabel="Latency p95 trend"
+                        yTicksCount={3}
+                        showGrid
+                        xLabels={['M-4','M-3','M-2','M-1','Now']}
+                        valueFormatter={(v) => `${v} ms`}
                       />
                     ) : s.key === 'build' ? (
-                      <MiniSparkline
-                        data={[12, 10, 9, 8, 8]}
-                        height={KPI_SPARK_HEIGHT}
-                        delay={getKpiDelay(idx)}
-                        duration={KPI_ANIM_DURATION}
-                        className="w-full"
-                        colorStart="#3b82f6"
-                        colorEnd="#22c55e"
+                      <LineChartAnimated
+                        data={[
+                          { label: 'W-4', value: 12 },
+                          { label: 'W-3', value: 10 },
+                          { label: 'W-2', value: 9 },
+                          { label: 'W-1', value: 8 },
+                          { label: 'Now', value: 8 },
+                        ]}
+                        width={520}
+                        height={120}
+                        ariaLabel={locale.startsWith('de') ? 'Build-Zeit Verlauf' : 'Build time trend'}
                         showArea={false}
-                        showDot
+                        showPoints
+                        yTicksCount={3}
+                        gradientArea={false}
+                        padding={{ top: 8, right: 8, bottom: 18, left: 30 }}
+                        tooltipFormatter={(label, value) => `${label} • ${value} min`}
+                        responsive
                       />
                     ) : (
                       <MiniDonut
@@ -142,7 +151,7 @@ export default async function TechnologyPage() {
                       />
                     )}
                   </div>
-                  <div className="font-semibold text-[--color-foreground-strong] [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums] text-[17px] md:text-[18px] leading-tight">
+                  <div className="kpi-value-row [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums]">
                     {s.value}
                   </div>
                   <div className="mx-auto mt-2 h-px w-8/12 bg-[--color-border-subtle]/25" aria-hidden />

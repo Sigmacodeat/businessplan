@@ -7,6 +7,9 @@ import InViewFade from '@/components/animation/InViewFade';
 import Link from 'next/link';
 import { Percent, Clock, Rocket, LineChart, Linkedin, Globe, Mail } from 'lucide-react';
 import TableSimple from '@/components/ui/TableSimple';
+import MiniDonut from '@/components/charts/MiniDonut';
+import MiniBarChart from '@/components/chapters/timeline/MiniBarChart';
+import LineChartAnimated from '@/components/charts/LineChartAnimated';
 import { CardTitle } from '@/components/ui/card';
 import ElegantCard from '@/components/ui/ElegantCard';
 import { NumberedList, NumberedItem } from '@components/chapters/NumberedList';
@@ -59,7 +62,7 @@ export default async function TeamPage() {
   return (
     <div id="chapter-content" className="space-y-8">
       <div className="prose prose-sm max-w-none [font-feature-settings:'ss01','ss02','liga','clig','tnum']">
-        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong] text-[clamp(18px,2vw,22px)]">{chapterTitle}</h1>
+        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong]">{chapterTitle}</h1>
 
         {/* Summary / CTA nah an den Anfang für besseren roten Faden */}
         {summary && (
@@ -308,6 +311,23 @@ export default async function TeamPage() {
 
         <InViewFade as="section" delay={0.11} aria-labelledby="team-plan-heading">
           <h3 id="team-plan-heading" className="not-prose text-[14px] md:text-[16px] font-medium mb-2 text-[--color-foreground]">{`${sub()} – ${tBp('headings.teamPlan')}`}</h3>
+          {/* Headcount-Trend (aus ftePlan) */}
+          {Array.isArray(ftePlan) && ftePlan.length > 0 && (
+            <div className="not-prose mb-4">
+              <LineChartAnimated
+                data={ftePlan.map((r) => ({ label: String(r.year), value: Number(String(r.teamSize).replace(/[^0-9.\-]/g, '')) || 0 }))}
+                width={720}
+                height={220}
+                ariaLabel={locale.startsWith('de') ? 'Teamgröße Verlauf' : 'Headcount trend'}
+                showArea
+                showPoints
+                yTicksCount={4}
+                padding={{ top: 12, right: 12, bottom: 22, left: 34 }}
+                tooltipFormatter={(label, value) => `${label} • ${value} FTE`}
+                responsive
+              />
+            </div>
+          )}
           {/* Konsolidierte Rollen-/Fokus-Tabelle (redundante Aufzählungen entfernt) */}
           {Array.isArray(ftePlan) && ftePlan.length > 0 && (
             <div className="mt-7 max-w-5xl mx-auto rounded-2xl bg-[--color-surface]/60 ring-1 ring-[--color-border-subtle]/40 p-3.5 md:p-5" aria-label="Teamplan – Tabelle">
@@ -333,7 +353,7 @@ export default async function TeamPage() {
           {/* ESOP KPI-Karten */}
           {Array.isArray(esopDetails) && esopDetails.length > 0 && (
             <div className="mt-6 mx-auto max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-7 justify-items-center">
-              {[
+              {[ 
                 { title: 'Pool', value: '12–15%', sub: 'Initial 12%, erweiterbar', Icon: Percent },
                 { title: 'Vesting', value: '4y / 1y Cliff', sub: 'Monatlich danach', Icon: Clock },
                 { title: 'Acceleration', value: '50% Double‑Trigger', sub: 'CoC + Kündigung o.G.', Icon: Rocket },
@@ -345,6 +365,47 @@ export default async function TeamPage() {
                         <k.Icon className="h-5.5 w-5.5 text-[--color-foreground]" aria-hidden />
                       </div>
                       <CardTitle className="text-[13.5px] md:text-sm text-[--color-foreground-muted]">{k.title}</CardTitle>
+                      {/* Mini-Chart Visual unter dem Titel */}
+                      <div className="kpi-visual my-3">
+                        {k.title === 'Pool' ? (
+                          <MiniDonut value={0.13} color="#22c55e" bg="rgba(34,197,94,0.12)" ariaLabel="ESOP Pool utilization" />
+                        ) : k.title === 'Vesting' ? (
+                          <MiniBarChart
+                            series={[0, 25, 50, 75, 100]}
+                            height={90}
+                            color="#3b82f6"
+                            ariaLabel="Vesting schedule"
+                            yTicksCount={3}
+                            showGrid
+                            xLabels={[locale.startsWith('de') ? 'Cliff' : 'Cliff', 'Y2', 'Y3', 'Y4', 'Full']}
+                            valueFormatter={(v) => `${v}%`}
+                          />
+                        ) : k.title === 'Acceleration' ? (
+                          <MiniBarChart
+                            series={[0, 0, 50]}
+                            height={90}
+                            color="#f59e0b"
+                            ariaLabel="Acceleration policy"
+                            yTicksCount={2}
+                            showGrid
+                            xLabels={[locale.startsWith('de') ? 't0' : 't0', 'CoC', 'Double']}
+                            valueFormatter={(v) => `${v}%`}
+                          />
+                        ) : (
+                          <LineChartAnimated
+                            data={[{label:'Y0',value:1},{label:'Y1',value:1.15},{label:'Y2',value:1.3},{label:'Y3',value:1.5}]}
+                            width={360}
+                            height={110}
+                            ariaLabel={locale.startsWith('de') ? 'FMV Verlauf' : 'FMV trend'}
+                            showArea
+                            showPoints
+                            yTicksCount={3}
+                            padding={{ top: 8, right: 8, bottom: 18, left: 30 }}
+                            tooltipFormatter={(label, value) => `${label} • ${value.toFixed(2)}x`}
+                            responsive
+                          />
+                        )}
+                      </div>
                       <div className="kpi-value-row mt-2.5 text-[28px] md:text-[34px] font-semibold tracking-tight text-gradient-subtle kpi-value">{k.value}</div>
                       <div className="mx-auto mt-5 h-px w-9/12 bg-[--color-border-subtle]/20"></div>
                       <div className="kpi-sub mt-3.5 text-[11px] md:text-xs text-[--color-foreground-muted]">{k.sub}</div>

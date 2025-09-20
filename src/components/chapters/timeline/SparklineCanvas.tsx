@@ -11,14 +11,25 @@ export type SparklineCanvasProps = {
   ariaLabel?: string | undefined;
   // Optional: Farbe der Linie (rgba)
   color?: string | undefined;
+  // Kompakter Modus: engere Paddings, feinere Linien, geringere Glows
+  compact?: boolean | undefined;
+  // Feintuning-Parameter (optional)
+  durationMs?: number | undefined; // Gesamtdauer der Animation (ms), default 980
+  lineWidth?: number | undefined;  // Überschreibt berechnete Linienbreite
+  glowRadius?: number | undefined; // Überschreibt Glowradius
+  areaAlpha?: number | undefined;  // Überschreibt Flächenalpha (0..1)
 };
 
 // State-of-the-Art Canvas Sparkline (Variante B: Model/Draw strikt getrennt)
-const SparklineCanvas: React.FC<SparklineCanvasProps> = ({ percent, xLabels, ariaLabel, color = 'rgba(16,185,129,0.8)' }) => {
+const SparklineCanvas: React.FC<SparklineCanvasProps> = ({ percent, xLabels, ariaLabel, color = 'rgba(16,185,129,0.8)', compact, durationMs, lineWidth: lineWidthOverride, glowRadius: glowRadiusOverride, areaAlpha: areaAlphaOverride }) => {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = React.useRef<HTMLDivElement | null>(null);
   const rafRef = React.useRef<number | null>(null);
   const resizeObsRef = React.useRef<ResizeObserver | null>(null);
+  // Modell-Cache für Hover/Tooltip (breit typisiert, um Vorwärts-Referenzen zu vermeiden)
+  // Typisierung bewusst locker, da buildModel intern definiert ist und wir nur Teilfelder nutzen
+  const modelRef = React.useRef<any>(null);
+  const [hover, setHover] = React.useState<{ x: number; y: number; pct: number } | null>(null);
 
   // Sichtbarkeitsbeobachtung (leichtgewichtig, ohne zusätzliche Lib)
   const [inView, setInView] = React.useState(false);
@@ -47,6 +58,12 @@ const SparklineCanvas: React.FC<SparklineCanvasProps> = ({ percent, xLabels, ari
     startY: number;
     endX: number;
     yFinal: number; // Ziel-Y für Prozentpunkt
+    areaStartColor: string;
+    areaEndColor: string;
+    lineWidth: number;
+    tipRadius: number;
+    glowRadius: number;
+    duration: number;
   };
 
   const buildModel = (ctx: CanvasRenderingContext2D, cssW: number, cssH: number): Model => {
@@ -55,9 +72,9 @@ const SparklineCanvas: React.FC<SparklineCanvasProps> = ({ percent, xLabels, ari
     const stroke = color;
     const glow = /239,\s*68,\s*68/.test(color) ? 'rgba(239,68,68,0.9)' : 'rgba(16,185,129,0.9)';
 
-    const padTop = 10;
-    const padBottom = 18;
-    const padX = 10;
+    const padTop = compact ? 6 : 10;
+    const padBottom = compact ? 14 : 18;
+    const padX = compact ? 8 : 10;
 
     const label = `${p >= 0 ? '+' : ''}${Math.round(p)}%`;
     ctx.save();
@@ -66,11 +83,11 @@ const SparklineCanvas: React.FC<SparklineCanvasProps> = ({ percent, xLabels, ari
     ctx.restore();
 
     // rechter Gutter abhängig von Labelbreite
-    const rightGutterBase = 36;
+    const rightGutterBase = compact ? 30 : 36;
     const rightGutter = Math.max(rightGutterBase, labelWidth + 18);
 
     // Raum für Y-Achse links (fix + etwas Luft)
-    const leftAxis = 20 + 8; // 20 Achse + 8 Luft
+    const leftAxis = (compact ? 16 : 20) + 8; // 20 Achse + 8 Luft
 
     const startX = padX + leftAxis;
     const endX = Math.max(startX, cssW - padX - rightGutter);
@@ -80,7 +97,20 @@ const SparklineCanvas: React.FC<SparklineCanvasProps> = ({ percent, xLabels, ari
     const startY = cssH - padBottom - 1;
     const yFinal = padTop + (1 - normFinal) * Hdraw;
 
-    return { width: cssW, height: cssH, padTop, padBottom, padX, strokeColor: stroke, tipGlowColor: glow, label, labelWidth, startX, startY, endX, yFinal };
+    // Area-Farbverlauf (sehr subtil)
+    const rgbaMatch = /rgba?\((\s*\d+\s*),(\s*\d+\s*),(\s*\d+\s*)(?:,(\s*\d*\.?\d+\s*))?\)/.exec(stroke) as RegExpExecArray | null;
+    const baseR = rgbaMatch ? parseInt(rgbaMatch[1]!, 10) : 16;
+    const baseG = rgbaMatch ? parseInt(rgbaMatch[2]!, 10) : 185;
+    const baseB = rgbaMatch ? parseInt(rgbaMatch[3]!, 10) : 129;
+    const areaStartAlpha = typeof areaAlphaOverride === 'number' ? Math.max(0, Math.min(1, areaAlphaOverride)) : (compact ? 0.08 : 0.12);
+    const areaStartColor = `rgba(${baseR},${baseG},${baseB},${areaStartAlpha})`;
+    const areaEndColor = `rgba(${baseR},${baseG},${baseB},0.0)`;
+    const lineWidth = typeof lineWidthOverride === 'number' ? lineWidthOverride : (compact ? 1.2 : 1.4);
+    const tipRadius = compact ? 1.9 : 2.4;
+    const glowRadius = typeof glowRadiusOverride === 'number' ? glowRadiusOverride : (compact ? 8 : 10);
+    const duration = typeof durationMs === 'number' && Number.isFinite(durationMs) ? Math.max(200, Math.min(4000, Math.floor(durationMs))) : 980;
+
+    return { width: cssW, height: cssH, padTop, padBottom, padX, strokeColor: stroke, tipGlowColor: glow, label, labelWidth, startX, startY, endX, yFinal, areaStartColor, areaEndColor, lineWidth, tipRadius, glowRadius, duration };
   };
 
   const draw = (
@@ -90,7 +120,7 @@ const SparklineCanvas: React.FC<SparklineCanvasProps> = ({ percent, xLabels, ari
     tt: number,
     xLabels?: [string, string]
   ) => {
-    const { width, height, padTop, padBottom, padX, strokeColor, tipGlowColor, label, labelWidth, startX, startY, endX, yFinal } = model;
+    const { width, height, padTop, padBottom, padX, strokeColor, tipGlowColor, label, labelWidth, startX, startY, endX, yFinal, areaStartColor, areaEndColor, lineWidth, tipRadius, glowRadius } = model;
 
     // Clear & scale
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -103,7 +133,7 @@ const SparklineCanvas: React.FC<SparklineCanvasProps> = ({ percent, xLabels, ari
     const tipY = startY + (yFinal - startY) * prog;
 
     // Y-Achse links
-    ctx.strokeStyle = 'rgba(148,163,184,0.18)';
+    ctx.strokeStyle = 'rgba(148,163,184,0.20)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(padX + 20, padTop + 0.5);
@@ -111,7 +141,7 @@ const SparklineCanvas: React.FC<SparklineCanvasProps> = ({ percent, xLabels, ari
     ctx.stroke();
 
     // Horizontale Gridline durch StartY (Niveau)
-    ctx.strokeStyle = 'rgba(148,163,184,0.10)';
+    ctx.strokeStyle = 'rgba(148,163,184,0.12)';
     ctx.setLineDash([2, 3]);
     ctx.beginPath();
     ctx.moveTo(startX, startY + 0.5);
@@ -119,74 +149,20 @@ const SparklineCanvas: React.FC<SparklineCanvasProps> = ({ percent, xLabels, ari
     ctx.stroke();
     ctx.setLineDash([]);
 
+    // Entfernt: Fläche unter der Linie – minimalistische Darstellung (nur Linien)
+
     // Linie
     ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = lineWidth;
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(startX, startY);
     ctx.lineTo(tipX, tipY);
     ctx.stroke();
 
-    // Glow um Spitze
-    ctx.save();
-    const g = ctx.createRadialGradient(tipX, tipY, 0, tipX, tipY, 10);
-    g.addColorStop(0.0, 'rgba(255,255,255,0.85)');
-    g.addColorStop(0.30, tipGlowColor);
-    g.addColorStop(0.85, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(tipX, tipY, 10, 0, Math.PI * 2);
-    ctx.fill();
+    // Entfernt: Glow, Punkt und Ring – minimalistische Darstellung (nur Linien)
 
-    // Tip-Dot + Ring
-    ctx.fillStyle = strokeColor;
-    ctx.beginPath();
-    ctx.arc(tipX, tipY, 2.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = tipGlowColor;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(tipX, tipY, 2.8, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-
-    // Prozent-Label (mit "Pill"-Hintergrund)
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = strokeColor;
-    ctx.font = '12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
-
-    let pctX = Math.min(width - padX - 6, tipX + 8);
-    const pctY = Math.max(padTop + 10, Math.min(height - padBottom - 10, tipY - 8));
-    if (tipX + 8 + labelWidth > width - padX - 6) {
-      pctX = Math.max(padX + 24, tipX - labelWidth - 8);
-    }
-
-    // Pill-Hintergrund (abgeleitet aus Stroke-Farbe)
-    const bgPadX = 6; const r = 6; const bgH = 16;
-    const bgW = labelWidth + bgPadX * 2;
-    const bgX = pctX - bgPadX; const bgY = pctY - bgH / 2;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(bgX + r, bgY);
-    ctx.arcTo(bgX + bgW, bgY, bgX + bgW, bgY + bgH, r);
-    ctx.arcTo(bgX + bgW, bgY + bgH, bgX, bgY + bgH, r);
-    ctx.arcTo(bgX, bgY + bgH, bgX, bgY, r);
-    ctx.arcTo(bgX, bgY, bgX + bgW, bgY, r);
-    ctx.closePath();
-    const rgbaMatch = /rgba?\((\s*\d+\s*),(\s*\d+\s*),(\s*\d+\s*)(?:,(\s*\d*\.?\d+\s*))?\)/.exec(strokeColor);
-    const pillFill = rgbaMatch ? `rgba(${rgbaMatch[1]},${rgbaMatch[2]},${rgbaMatch[3]},0.18)` : 'rgba(0,0,0,0.28)';
-    const pillStroke = rgbaMatch ? `rgba(${rgbaMatch[1]},${rgbaMatch[2]},${rgbaMatch[3]},0.35)` : 'rgba(255,255,255,0.08)';
-    ctx.fillStyle = pillFill;
-    ctx.fill();
-    ctx.strokeStyle = pillStroke;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.restore();
-
-    ctx.fillText(label, pctX, pctY);
+    // Entfernt: Prozent-Label mit Pill-Hintergrund – minimalistische Darstellung (nur Linien)
 
     // X-Labels
     if (Array.isArray(xLabels) && xLabels.length === 2) {
@@ -196,7 +172,7 @@ const SparklineCanvas: React.FC<SparklineCanvasProps> = ({ percent, xLabels, ari
       ctx.textBaseline = 'top';
       const x0 = padX + 24; // links am Axisbereich
       const x1 = endX;      // rechts am Linienende
-      const yAxisLabels = height - padBottom + 12;
+      const yAxisLabels = height - padBottom + (compact ? 10 : 12);
       ctx.fillText(xLabels[0], x0, yAxisLabels);
       ctx.fillText(xLabels[1], x1, yAxisLabels);
     }
@@ -208,7 +184,8 @@ const SparklineCanvas: React.FC<SparklineCanvasProps> = ({ percent, xLabels, ari
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const dpr = Math.max(1, Math.floor((typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1));
+    const rawDpr = (typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1;
+    const dpr = Math.min(2, Math.max(1, Math.floor(rawDpr)));
     const rect = wrapper.getBoundingClientRect();
     const cssW = Math.max(1, Math.floor(rect.width));
     const cssH = Math.max(1, Math.floor(rect.height));
@@ -219,10 +196,11 @@ const SparklineCanvas: React.FC<SparklineCanvasProps> = ({ percent, xLabels, ari
     canvas.style.height = `${cssH}px`;
 
     const model = buildModel(ctx, cssW, cssH);
+    modelRef.current = model;
 
     const start = performance.now();
     const step = (ts: number) => {
-      const raw = Math.min(1, Math.max(0, (ts - start) / 980));
+      const raw = Math.min(1, Math.max(0, (ts - start) / model.duration));
       const eased = 0.5 * (1 - Math.cos(Math.PI * raw));
       draw(ctx, dpr, model, eased, xLabels);
       if (raw < 1 && (inView || typeof document === 'undefined')) {
@@ -231,7 +209,7 @@ const SparklineCanvas: React.FC<SparklineCanvasProps> = ({ percent, xLabels, ari
     };
     rafRef.current = requestAnimationFrame(step);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [percent, color, JSON.stringify(xLabels), inView]);
+  }, [percent, color, JSON.stringify(xLabels), inView, compact]);
 
   React.useEffect(() => {
     if (!inView && typeof document !== 'undefined') return; // Zeichne nur wenn sichtbar (oder SSR)
@@ -259,8 +237,35 @@ const SparklineCanvas: React.FC<SparklineCanvasProps> = ({ percent, xLabels, ari
   }, [renderOnce]);
 
   return (
-    <div ref={wrapperRef} className="relative w-full h-full">
+    <div
+      ref={wrapperRef}
+      className="relative w-full h-full"
+      onMouseLeave={() => setHover(null)}
+      onMouseMove={(e) => {
+        const el = wrapperRef.current; const m = modelRef.current;
+        if (!el || !m) return;
+        const rect = el.getBoundingClientRect();
+        const localX = e.clientX - rect.left;
+        // Projektionsverhältnis entlang der Linie von startX -> endX
+        const clampedX = Math.max(m.startX, Math.min(m.endX, localX));
+        const ratio = m.endX === m.startX ? 0 : (clampedX - m.startX) / (m.endX - m.startX);
+        const yOnLine = m.startY + (m.yFinal - m.startY) * ratio;
+        const base = typeof m.pValue === 'number' ? m.pValue : 0;
+        const pct = Math.max(0, Math.min(1000, base * ratio));
+        setHover({ x: clampedX, y: yOnLine, pct });
+      }}
+    >
       <canvas ref={canvasRef} className="w-full h-full" role="img" aria-label={ariaLabel} />
+      {hover && (
+        <div
+          className="pointer-events-none absolute select-none"
+          style={{ left: Math.round(hover.x) + 8, top: Math.max(6, Math.round(hover.y) - 22) }}
+        >
+          <div className="rounded-md px-2 py-1 text-[10px] bg-[--color-surface] text-[--color-foreground] ring-1 ring-[--color-border] shadow-sm">
+            {`${Math.round(hover.pct)}%`}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

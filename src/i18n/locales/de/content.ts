@@ -2,12 +2,12 @@
 // File: src/i18n/locales/de/content.ts
 const data = {
   "company": {
-    "industry": "AI‑Robotik / Software",
+    "industry": "Humanoide Robotik / AI‑Software",
     "location": "München, Deutschland",
-    "mission": "Roboterfähigkeiten als Apps – sicher, auditierbar, skalierbar",
+    "mission": "Robotik als Software: sicher, auditierbar, skalierbar.",
     "name": "SIGMACODE AI GmbH",
-    "team": "Kernteam 6 FTE, Hiring‑Fokus AI/Robotics",
-    "vision": "Humanoide AI‑Robotik, die Arbeit sicherer und produktiver macht"
+    "team": "Kernteam (6 FTE) – Hiring‑Fokus AI/Robotics",
+    "vision": "Humanoide AI‑Robotik, die Arbeit messbar sicherer und produktiver macht."
   },
   "market": {
     "sam": "Industrie‑Segmente mit hohem Bedarf: Logistik, Fertigung, Facility & Service – initiale Fokuskorridore mit klarer Zahlungsbereitschaft.",
@@ -15,11 +15,11 @@ const data = {
     "tam": "> $40 Mrd. bis 2030 (Service Robotics & Humanoids) – getrieben durch Automatisierung, Reshoring und demografischen Wandel."
   },
   "solution": {
-    "agents": "RL/IL‑Agenten: Lernen aus Demos & Simulation (Policy‑Hub)",
-    "appstore": "Robot‑App‑Store: zertifizierte Skills, Marketplace & Billing",
-    "integration": "Enterprise‑Integration: ERP/WMS/MES/IoT, Digital Twins",
-    "rass": "Robot‑as‑a‑Service: Subscription + Usage mit Fleet‑Management",
-    "usp": "Guardrails & Compliance (CE/AI‑Act), Zero‑Downtime‑Deployments"
+    "agents": "RL/IL‑Agenten (Policy‑Hub): Lernen aus Demos & Simulation.",
+    "appstore": "Robot‑App‑Store: zertifizierte Skills, Marketplace & Billing.",
+    "integration": "Enterprise‑Integration: ERP/WMS/MES/IoT, Digital Twins.",
+    "rass": "Robot‑as‑a‑Service (Subscription + Usage) mit Fleet‑Management.",
+    "usp": "Guardrails & Compliance (CE/AI‑Act), Zero‑Downtime‑Deployments."
   }
 } as const;
 

@@ -64,11 +64,11 @@ export function NumberedItem({
 
   return (
     <li className={`flex items-start gap-3 mb-1.5 md:mb-2 ${className}`}>
-      <span className="chapter-num font-medium text-xs shrink-0 w-[48px] md:w-[56px] text-right [font-variant-numeric:tabular-nums] [font-feature-settings:'tnum']">{num}</span>
+      <span className="chapter-num font-medium text-[14px] md:text-[15px] shrink-0 w-[48px] md:w-[56px] text-right [font-variant-numeric:tabular-nums] [font-feature-settings:'tnum']">{num}</span>
       <span className="inline-flex items-start gap-2 flex-1 min-w-0">
         {Icon ? <Icon className="mt-[1px] h-4 w-4 text-[--color-foreground]" /> : null}
         <span className="min-w-0">
-          {title ? <strong>{title}</strong> : null}
+          {title ? <strong className="text-[14px] md:text-[15px]">{title}</strong> : null}
           {renderWithBoldPrefix(children)}
         </span>
       </span>

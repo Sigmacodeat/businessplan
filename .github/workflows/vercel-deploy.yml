@@ -50,11 +50,22 @@ jobs:
       - name: Verify pnpm
         run: pnpm -v
 
+      - name: Mask Vercel IDs in logs
+        run: |
+          echo "::add-mask::${VERCEL_TOKEN}"
+          echo "::add-mask::${VERCEL_PROJECT_ID}"
+          echo "::add-mask::${VERCEL_ORG_ID}"
+          echo "Using Vercel IDs (masked)"
+
+      - name: Vercel whoami (auth check)
+        run: npx vercel whoami --token=$VERCEL_TOKEN
+
       - name: Verify Vercel CLI auth
         run: npx vercel --version
 
       - name: Link project (no prompt)
         run: |
+          set -x
           npx vercel link --yes \
             --cwd=. \
             --project=$VERCEL_PROJECT_ID \
@@ -63,6 +74,7 @@ jobs:
 
       - name: Pull Vercel Environment Information
         run: |
+          set -x
           npx vercel pull --yes \
             --environment=production \
             --cwd=. \
@@ -80,6 +92,7 @@ jobs:
 
       - name: Deploy to Vercel (prebuilt)
         run: |
+          set -x
           npx vercel deploy --prebuilt \
             --prod \
             --cwd=. \

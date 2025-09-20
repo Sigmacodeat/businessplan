@@ -48,7 +48,7 @@ export default async function ExitStrategyPage() {
   return (
     <div className="space-y-6">
       <div className="prose prose-sm max-w-none [font-feature-settings:'ss01','ss02','liga','clig','tnum']">
-        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong] text-[clamp(18px,2vw,22px)]">{chapterTitle}</h1>
+        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong]">{chapterTitle}</h1>
 
         {/* Option Cards (A/B/C) */}
         <span id="exit-options" className="sr-only" aria-hidden="true" />

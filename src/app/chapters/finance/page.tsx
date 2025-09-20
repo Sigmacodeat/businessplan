@@ -298,7 +298,7 @@ export default async function FinancePage() {
   return (
     <div className="space-y-8 md:space-y-10">
       <div className="prose prose-sm max-w-none [font-feature-settings:'ss01','ss02','liga','clig','tnum']">
-        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong] text-[clamp(18px,2vw,22px)]">
+        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong]">
           {chapterTitle}
         </h1>
         {financeIntro ? (
@@ -371,7 +371,7 @@ export default async function FinancePage() {
                       <div className="h-[18px]" />
                     )}
                   </div>
-                  <div className="font-semibold text-[--color-foreground-strong] [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums] text-[15px] md:text-[16px] leading-snug kpi-value">
+                  <div className="kpi-value-row [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums] kpi-value">
                     {(() => {
                       const raw = String(k.v);
                       const { to, prefix, suffix, decimals } = parseKpiValue(raw);

@@ -16,10 +16,10 @@ import PitchCoverPage from "@/components/document/PitchCoverPage";
 import ClosingPage from "@/components/document/ClosingPage";
 import PrintTOC from "@/components/document/PrintTOC";
 // KPI / Charts
-import MiniBar from "@/components/charts/MiniBar";
-import MiniSparkline from "@/components/charts/MiniSparkline";
+import MiniBarChart from "@/components/chapters/timeline/MiniBarChart";
+import LineChartAnimated from "@/components/charts/LineChartAnimated";
 import MiniDonut from "@/components/charts/MiniDonut";
-import { KPI_ANIM_DURATION, KPI_BAR_HEIGHT, KPI_SPARK_HEIGHT, KPI_DONUT_CLASS, getKpiDelay } from "@/components/charts/kpiAnimation";
+import { KPI_ANIM_DURATION, KPI_DONUT_CLASS, getKpiDelay } from "@/components/charts/kpiAnimation";
 import { getChapterTheme } from "@/app/chapters/chapterTheme";
 
 // Orchestrierte, links->rechts Stagger-Animation für KPI-Grids
@@ -35,9 +35,31 @@ const kpiContainerVariants = {
 };
 
 const kpiItemVariants = {
-  hidden: { opacity: 0, x: 18, y: 8 },
-  show: { opacity: 1, x: 0, y: 0, transition: { duration: 0.45 } },
+  hidden: { opacity: 0, x: -16, y: 6 },
+  show: { opacity: 1, x: 0, y: 0, transition: { duration: 0.42 } },
 };
+
+// Gleiches Prinzip für die Bullet-Listen in allen Kapitel-Sections
+const bulletContainerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      when: "beforeChildren",
+      staggerChildren: 0.06,
+      delayChildren: 0.04,
+    },
+  },
+};
+
+const bulletItemVariants = {
+  hidden: { opacity: 0, x: -14 },
+  show: { opacity: 1, x: 0, transition: { duration: 0.38 } },
+};
+
+// Früheres Scroll-Laden: spezielles Viewport-Setup nur für die Pitch-Seite
+// amount 0.02 (~2% Sichtbarkeit) mit moderateren Margins, damit Trigger verlässlicher feuern
+const PITCH_VIEWPORT = { once: true, amount: 0.02, margin: "-20% 0px -20% 0px" } as const;
 
 type SimpleKpi = { label: string; value: string | number; sub?: string };
 
@@ -141,6 +163,24 @@ function extractBulletsForChapter(slug: string, messages: Messages | null): stri
         .filter(Boolean)
         .join(" • ");
       if (marketLine) exec.push(marketLine);
+
+      // Fallbacks, falls oben nichts verfügbar ist
+      if (exec.length === 0) {
+        // 1) content.executive.bullets
+        const execBullets = (content.executive && Array.isArray((content as any).executive.bullets)) ? (content as any).executive.bullets as string[] : [];
+        if (execBullets.length > 0) return execBullets.slice(0, 8);
+        // 2) bp.executive.bullets
+        const bex = (m.bp?.executive ?? {}) as any;
+        if (Array.isArray(bex.bullets) && bex.bullets.length > 0) return (bex.bullets as string[]).slice(0, 8);
+        // 3) bp.execFacts oder execFacts im Root
+        const facts = (m.bp?.execFacts ?? m.execFacts ?? {}) as Record<string, unknown>;
+        const preferredKeys = ['tagline', 'summary', 'vision', 'mission', 'valueProp', 'positioning'];
+        const factLines = preferredKeys
+          .map(k => facts[k])
+          .filter(v => typeof v === 'string' && (v as string).trim().length > 0) as string[];
+        if (factLines.length > 0) return factLines.slice(0, 8);
+      }
+
       return exec.slice(0, 8);
     }
     case "business-model": {
@@ -285,6 +325,8 @@ function extractBulletsForChapter(slug: string, messages: Messages | null): stri
   }
 }
 
+// (Fallback-Bullets entfernt: Investorenvorlage soll nur echte Inhalte zeigen)
+
 export default function PitchPage() {
   const { messages, locale } = usePitchMessages();
   const t = useTranslations("pitchCover");
@@ -297,7 +339,7 @@ export default function PitchPage() {
   // Gradient-IDs dynamisch, um Kollisionen zu vermeiden
   const badgeGradId = useId();
   // Untere Sektion erst nach expliziter Interaktion laden
-  const [hasInteracted, setHasInteracted] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(true);
   // Trigger: Text-Kick nach Icon-Wobble
   const [kick, setKick] = useState(false);
 
@@ -434,6 +476,40 @@ export default function PitchPage() {
     chapters.filter((c) => !/arbeitspaket/i.test(c.title) && !/arbeitspaket/i.test(String(c.slug)))
   ), []);
 
+  // Precompute sections for Investment Case
+  const investmentSections = useMemo(() => {
+    const m: any = messages ?? {};
+    const moats: string[] = Array.isArray(m.marketCompetitive?.moat)
+      ? m.marketCompetitive.moat
+      : (Array.isArray(m.content?.marketCompetitive?.moat)
+          ? m.content.marketCompetitive.moat
+          : overrides.investmentCase.moat);
+    const traction: string[] = Array.isArray((m.bp as any)?.tractionKpis?.highlights)
+      ? (m.bp as any).tractionKpis.highlights
+      : overrides.investmentCase.traction;
+    const unit: string[] = Array.isArray(m.businessModel?.unitEconomics)
+      ? m.businessModel.unitEconomics
+      : (Array.isArray(m.content?.businessModel?.unitEconomics)
+          ? m.content.businessModel.unitEconomics
+          : overrides.investmentCase.unitEconomics);
+    const gtm: string[] = Array.isArray(m.gtm?.phase1)
+      ? m.gtm.phase1
+      : (Array.isArray(m.content?.gtm?.phase1)
+          ? m.content.gtm.phase1
+          : overrides.investmentCase.gtm);
+    type Sec = { title: string; items: string[] };
+    const sections: Sec[] = [
+      { title: 'Moat', items: moats.slice(0, 3) },
+      { title: 'Traction', items: traction.slice(0, 3) },
+      { title: 'Unit Economics', items: unit.slice(0, 3) },
+      { title: 'GTM', items: gtm.slice(0, 3) },
+    ];
+    return sections;
+  }, [messages, overrides]);
+
+  // Precompute risks bullets
+  const risksBullets = useMemo(() => extractBulletsForChapter('risks', messages), [messages]);
+
   // Presenter-Mode: einfache Tastaturnavigation zwischen Kapiteln
   useEffect(() => {
     function getSections(): HTMLElement[] {
@@ -466,8 +542,10 @@ export default function PitchPage() {
         scrollToIndex(getCurrentIndex() - 1);
       }
     };
-    window.addEventListener('keydown', onKey, { passive: false } as any);
-    return () => window.removeEventListener('keydown', onKey as any);
+    window.addEventListener('keydown', onKey as any, { passive: false } as any);
+    return () => {
+      window.removeEventListener('keydown', onKey as any);
+    };
   }, []);
 
   return (
@@ -657,16 +735,14 @@ export default function PitchPage() {
         </div>
         
         <div className="space-y-20">
-          {hasInteracted && filteredChapters.map((chapter, index) => (
+          {filteredChapters.map((chapter, index) => (
             <motion.div
               key={chapter.id}
               className="chapter-section"
               data-chapter-index={index}
               id={`pitch-${chapter.slug}`}
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 1, y: 0 }}
               transition={{ ...defaultTransition, delay: index * 0.08 }}
-              viewport={{ ...defaultViewport, margin: "-30% 0px -55% 0px" }}
             >
               <ChapterSection
                 chapter={chapter}
@@ -680,7 +756,6 @@ export default function PitchPage() {
         </div>
 
         {/* Rechte Dots-Navigation */}
-        {hasInteracted && (
         <nav
           aria-label="Kapitel Navigation"
           className="fixed right-3 md:right-4 top-1/2 -translate-y-1/2 z-[55] hidden sm:block"
@@ -713,37 +788,21 @@ export default function PitchPage() {
             ))}
           </ul>
         </nav>
-        )}
 
         {/* Investment Case – Moat, Traction, Unit Economics, GTM */}
-        {hasInteracted && (
         <Reveal>
           <ElegantCard className="mt-14" innerClassName="p-8 print:shadow-none print:ring-0 print:bg-transparent">
             <div className="mb-4">
               <h2 className="text-xl font-extrabold tracking-tight">Investment Case</h2>
             </div>
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-            {useMemo(() => {
-              const m: any = messages ?? {};
-              const moats: string[] = Array.isArray(m.marketCompetitive?.moat) ? m.marketCompetitive.moat : (Array.isArray(m.content?.marketCompetitive?.moat) ? m.content.marketCompetitive.moat : overrides.investmentCase.moat);
-              const traction: string[] = Array.isArray((m.bp as any)?.tractionKpis?.highlights) ? (m.bp as any).tractionKpis.highlights : overrides.investmentCase.traction;
-              const unit: string[] = Array.isArray(m.businessModel?.unitEconomics) ? m.businessModel.unitEconomics : (Array.isArray(m.content?.businessModel?.unitEconomics) ? m.content.businessModel.unitEconomics : overrides.investmentCase.unitEconomics);
-              const gtm: string[] = Array.isArray(m.gtm?.phase1) ? m.gtm.phase1 : (Array.isArray(m.content?.gtm?.phase1) ? m.content.gtm.phase1 : overrides.investmentCase.gtm);
-              type Sec = { title: string; items: string[] };
-              const sections: Sec[] = [
-                { title: 'Moat', items: moats.slice(0, 3) },
-                { title: 'Traction', items: traction.slice(0, 3) },
-                { title: 'Unit Economics', items: unit.slice(0, 3) },
-                { title: 'GTM', items: gtm.slice(0, 3) },
-              ];
-              return sections;
-            }, [messages, overrides]).map((sec, idx) => (
+            {investmentSections.map((sec, idx) => (
               <motion.div
                 key={idx}
                 className="rounded-2xl bg-[--color-surface]/70 ring-1 ring-[--color-border-subtle] p-5"
                 initial={{ opacity: 0, y: 8 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-30% 0px -55% 0px" }}
+                viewport={PITCH_VIEWPORT}
                 transition={{ duration: 0.35, ease: 'easeOut', delay: Math.min(idx * 0.05, 0.25) }}
               >
                 <div className="flex items-center gap-2.5 mb-3">
@@ -762,10 +821,8 @@ export default function PitchPage() {
             </div>
           </ElegantCard>
         </Reveal>
-        )}
 
         {/* Use of Funds – Ticket, Allocation, Nächste Meilensteine */}
-        {hasInteracted && (
         <Reveal>
           <ElegantCard className="mt-12" innerClassName="p-8 print:shadow-none print:ring-0 print:bg-transparent">
             <div className="mb-4">
@@ -872,10 +929,8 @@ export default function PitchPage() {
               </div>
           </ElegantCard>
         </Reveal>
-        )}
 
         {/* Ask & Terms – Runde, Rahmenbedingungen, Runway */}
-        {hasInteracted && (
         <Reveal>
           <ElegantCard className="mt-12" innerClassName="p-8 print:shadow-none print:ring-0 print:bg-transparent">
             <div className="mb-4">
@@ -945,17 +1000,15 @@ export default function PitchPage() {
           </div>
           </ElegantCard>
         </Reveal>
-        )}
 
         {/* Compact Risks & Mitigation */}
-        {hasInteracted && (
         <Reveal>
           <ElegantCard className="mt-12" innerClassName="p-8 print:shadow-none print:ring-0 print:bg-transparent">
             <div className="mb-2">
               <h2 className="text-lg font-semibold tracking-tight">Risiken & Mitigation (Auszug)</h2>
             </div>
             <ul className="grid gap-2.5 md:gap-3 md:grid-cols-2 text-[13px] md:text-[14px] list-none p-0 m-0">
-            {useMemo(() => extractBulletsForChapter('risks', messages), [messages]).filter((r) => !shouldHideBullet(r)).slice(0,6).map((r, i) => (
+            {risksBullets.filter((r) => !shouldHideBullet(r)).slice(0,6).map((r, i) => (
               <li key={i} className="flex items-start gap-2">
                 <span className="mt-1 h-1 w-1 rounded-full bg-white/80" aria-hidden />
                 <span>{r}</span>
@@ -964,10 +1017,8 @@ export default function PitchPage() {
             </ul>
           </ElegantCard>
         </Reveal>
-        )}
 
         {/* Call to Action */}
-        {hasInteracted && (
         <Reveal>
           <ElegantCard className="mt-16" innerClassName="p-8 print:shadow-none print:ring-0 print:bg-transparent">
             <motion.div
@@ -975,7 +1026,7 @@ export default function PitchPage() {
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ ...defaultTransition, delay: 0.2 }}
-            viewport={{ ...defaultViewport }}
+            viewport={PITCH_VIEWPORT}
           >
             <h2>
               Nächster Schritt: Investment-Dialog
@@ -1007,7 +1058,6 @@ export default function PitchPage() {
             </motion.div>
           </ElegantCard>
         </Reveal>
-        )}
       </div>
       {/* Print-only closing/contact page */}
       <div className="hidden print:block">
@@ -1049,7 +1099,7 @@ function AnimatedCounter({ value, delay = 0 }: { value: number; delay?: number }
       style={{}}
       initial={{ opacity: 0.85 }}
       whileInView={{ opacity: 1 }}
-      viewport={{ once: true, margin: "-30% 0px -55% 0px" }}
+      viewport={PITCH_VIEWPORT}
       transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
     >
       {display}
@@ -1096,53 +1146,48 @@ function ChapterSection({ chapter, index, total, messages, locale }: {
     switch (chapter.slug) {
       case 'business-model': { // ARPU, CAC, LTV, Gross Margin
         const bm = (m.bp?.content?.businessModel ?? m.bp?.businessModel ?? m.content?.businessModel ?? {}) as any;
-        return [
-          { key: 'arpu', label: 'ARPU', value: bm?.kpi?.arpu ?? (de ? '€3.0k–€4.0k / Roboter / Monat' : '€3.0k–€4.0k / robot / month'), chart: 'spark' },
-          { key: 'cac', label: 'CAC', value: bm?.kpi?.cac ?? '€4k–€8k', chart: 'bar' },
-          { key: 'ltv', label: 'LTV', value: bm?.kpi?.ltv ?? '€40k–€60k', chart: 'spark' },
-          { key: 'gm', label: de ? 'Bruttomarge' : 'Gross Margin', value: bm?.kpi?.grossMargin ?? (de ? '70–80%' : '70–80%'), chart: 'donut' },
-        ];
+        const items: any[] = [];
+        if (bm?.kpi?.arpu) items.push({ key: 'arpu', label: 'ARPU', value: bm.kpi.arpu, chart: 'spark' });
+        if (bm?.kpi?.cac) items.push({ key: 'cac', label: 'CAC', value: bm.kpi.cac, chart: 'bar' });
+        if (bm?.kpi?.ltv) items.push({ key: 'ltv', label: 'LTV', value: bm.kpi.ltv, chart: 'spark' });
+        if (bm?.kpi?.grossMargin) items.push({ key: 'gm', label: de ? 'Bruttomarge' : 'Gross Margin', value: bm.kpi.grossMargin, chart: 'donut' });
+        return items;
       }
       case 'market': { // Service market, CAGR Service, Humanoids market, EU share
         const vol = (m.bp?.market?.volume ?? {}) as any;
-        const svcGlobal = typeof vol?.service?.global === 'string' ? vol.service.global : (de ? 'Service‑Markt: –' : 'Service market: –');
-        const svcCagr = typeof vol?.service?.cagr === 'string' ? vol.service.cagr : (de ? '~16%' : '~16%');
-        const humGlobal = typeof vol?.humanoid?.global === 'string' ? vol.humanoid.global : (de ? 'Humanoide: –' : 'Humanoids: –');
-        const euShare = typeof vol?.eu === 'string' ? vol.eu : (de ? 'EU‑Anteil: –' : 'EU share: –');
-        return [
-          { key: 'svc', label: de ? 'Service‑Markt (global)' : 'Service market (global)', value: svcGlobal, chart: 'spark' },
-          { key: 'cagr', label: 'CAGR (Service)', value: svcCagr, chart: 'bar' },
-          { key: 'hum', label: de ? 'Humanoiden‑Markt (global)' : 'Humanoids market (global)', value: humGlobal, chart: 'spark' },
-          { key: 'eu', label: de ? 'EU‑Anteil' : 'EU share', value: euShare, chart: 'donut' },
-        ];
+        const items: any[] = [];
+        if (typeof vol?.service?.global === 'string') items.push({ key: 'svc', label: de ? 'Service‑Markt (global)' : 'Service market (global)', value: vol.service.global, chart: 'spark' });
+        if (typeof vol?.service?.cagr === 'string') items.push({ key: 'cagr', label: 'CAGR (Service)', value: vol.service.cagr, chart: 'bar' });
+        if (typeof vol?.humanoid?.global === 'string') items.push({ key: 'hum', label: de ? 'Humanoiden‑Markt (global)' : 'Humanoids market (global)', value: vol.humanoid.global, chart: 'spark' });
+        if (typeof vol?.eu === 'string') items.push({ key: 'eu', label: de ? 'EU‑Anteil' : 'EU share', value: vol.eu, chart: 'donut' });
+        return items;
       }
       case 'finance': { // Market 2030, Break-even, CAGR, Revenue 2030 – Werte aus bp/finance & bp/market
         const t = (m.bp ?? {}) as any;
-        const kpis = [
-          { key: 'market2030', label: de ? 'Markt 2030' : 'Market 2030', value: (t?.market?.volume?.service?.global as string) ?? '€40+ Mrd', chart: 'spark' },
-          { key: 'breakEven', label: de ? 'Break‑even' : 'Break‑even', value: '2028', chart: 'bar' },
-          { key: 'cagr', label: 'CAGR', value: (t?.market?.volume?.service?.cagr as string) ?? (de ? '~16%' : '~16%'), chart: 'bar' },
-          { key: 'revenue2030', label: de ? 'Umsatz 2030' : 'Revenue 2030', value: (t?.execFacts?.revenue2030 as string) ?? (de ? '€25–40 Mio' : '€25–40M'), chart: 'spark' },
-        ];
-        return kpis;
+        const items: any[] = [];
+        if (typeof t?.market?.volume?.service?.global === 'string') items.push({ key: 'market2030', label: de ? 'Markt 2030' : 'Market 2030', value: t.market.volume.service.global, chart: 'spark' });
+        if (typeof t?.finance?.breakEven === 'string') items.push({ key: 'breakEven', label: de ? 'Break‑even' : 'Break‑even', value: t.finance.breakEven, chart: 'bar' });
+        if (typeof t?.market?.volume?.service?.cagr === 'string') items.push({ key: 'cagr', label: 'CAGR', value: t.market.volume.service.cagr, chart: 'bar' });
+        if (typeof t?.execFacts?.revenue2030 === 'string') items.push({ key: 'revenue2030', label: de ? 'Umsatz 2030' : 'Revenue 2030', value: t.execFacts.revenue2030, chart: 'spark' });
+        return items;
       }
       case 'technology': { // Uptime, Latency, Build time, TRL
         const tk = (m.bp?.technology?.kpi ?? {}) as any;
-        return [
-          { key: 'uptime', label: 'Uptime', value: tk?.uptime ?? '99.99%', chart: 'donut' },
-          { key: 'latency', label: de ? 'Latenz p95' : 'Latency p95', value: tk?.latencyP95 ?? (de ? '<10 ms' : '<10 ms'), chart: 'bar' },
-          { key: 'build', label: de ? 'Build‑Zeit' : 'Build time', value: tk?.buildTime ?? (de ? '~8 min' : '~8 min'), chart: 'spark' },
-          { key: 'trl', label: 'TRL', value: tk?.trl ?? '3 → 8 (2030)', chart: 'donut' },
-        ];
+        const items: any[] = [];
+        if (tk?.uptime) items.push({ key: 'uptime', label: 'Uptime', value: tk.uptime, chart: 'donut' });
+        if (tk?.latencyP95) items.push({ key: 'latency', label: de ? 'Latenz p95' : 'Latency p95', value: tk.latencyP95, chart: 'bar' });
+        if (tk?.buildTime) items.push({ key: 'build', label: de ? 'Build‑Zeit' : 'Build time', value: tk.buildTime, chart: 'spark' });
+        if (tk?.trl) items.push({ key: 'trl', label: 'TRL', value: tk.trl, chart: 'donut' });
+        return items;
       }
       case 'risks': { // Top risks, Mitigation coverage, Regulatory readiness, Runway target
         const rk = (m.bp?.risks?.kpi ?? {}) as any;
-        return [
-          { key: 'top', label: de ? 'Top‑Risiken' : 'Top risks', value: rk?.topRisks ?? '3–5', chart: 'donut' },
-          { key: 'mitigation', label: de ? 'Mitigation' : 'Mitigation', value: rk?.mitigationCoverage ?? (de ? '70–80%' : '70–80%'), chart: 'donut' },
-          { key: 'reg', label: de ? 'Regulatorik' : 'Regulatory', value: rk?.regulatoryReadiness ?? 'EU‑Ready', chart: 'spark' },
-          { key: 'runway', label: de ? 'Runway Ziel' : 'Runway target', value: rk?.runway ?? (de ? '12–18M' : '12–18M'), chart: 'bar' },
-        ];
+        const items: any[] = [];
+        if (rk?.topRisks) items.push({ key: 'top', label: de ? 'Top‑Risiken' : 'Top risks', value: rk.topRisks, chart: 'donut' });
+        if (rk?.mitigationCoverage) items.push({ key: 'mitigation', label: de ? 'Mitigation' : 'Mitigation', value: rk.mitigationCoverage, chart: 'donut' });
+        if (rk?.regulatoryReadiness) items.push({ key: 'reg', label: de ? 'Regulatorik' : 'Regulatory', value: rk.regulatoryReadiness, chart: 'spark' });
+        if (rk?.runway) items.push({ key: 'runway', label: de ? 'Runway Ziel' : 'Runway target', value: rk.runway, chart: 'bar' });
+        return items;
       }
       case 'traction-kpis': { // Live metrics kompakt (ohne harte Abhängigkeit vom metrics Modul)
         const td = (m.bp?.tractionKpis ?? {}) as any;
@@ -1152,11 +1197,11 @@ function ChapterSection({ chapter, index, total, messages, locale }: {
       }
       case 'exit-strategy': { // Kompakte A/B/C Optik
         const ex = (m.bp?.exit ?? {}) as any;
-        return [
-          { key: 'growth', label: 'Growth', value: ex?.options?.a?.title ?? 'Option A', chart: 'bar' },
-          { key: 'forecast', label: 'Forecast', value: ex?.options?.b?.title ?? 'Option B', chart: 'spark' },
-          { key: 'share', label: de ? 'Marktanteil' : 'Market share', value: ex?.options?.c?.title ?? 'Option C', chart: 'donut' },
-        ];
+        const items: any[] = [];
+        if (ex?.options?.a?.title) items.push({ key: 'growth', label: 'Growth', value: ex.options.a.title, chart: 'bar' });
+        if (ex?.options?.b?.title) items.push({ key: 'forecast', label: 'Forecast', value: ex.options.b.title, chart: 'spark' });
+        if (ex?.options?.c?.title) items.push({ key: 'share', label: de ? 'Marktanteil' : 'Market share', value: ex.options.c.title, chart: 'donut' });
+        return items;
       }
       default:
         return [] as any[];
@@ -1203,10 +1248,11 @@ function ChapterSection({ chapter, index, total, messages, locale }: {
         <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3 sm:gap-4">
           <motion.span
-            className="shine-text text-3xl sm:text-4xl font-extrabold"
+            className="shine-text ai-blue text-3xl sm:text-4xl font-extrabold"
             initial={{ opacity: 0.85, y: 4 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
+            viewport={PITCH_VIEWPORT}
           >
             <AnimatedCounter value={index + 1} delay={index * 0.05} />
           </motion.span>
@@ -1230,7 +1276,7 @@ function ChapterSection({ chapter, index, total, messages, locale }: {
           variants={kpiContainerVariants}
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true, margin: "-30% 0px -55% 0px" }}
+          viewport={PITCH_VIEWPORT}
         >
           {kpiCards.map((s: any, idx: number) => (
             <motion.li
@@ -1246,26 +1292,35 @@ function ChapterSection({ chapter, index, total, messages, locale }: {
                   </div>
                   <div className="mb-3 kpi-visual">
                     {s.chart === 'bar' ? (
-                      <MiniBar
-                        data={[24, 36, 42, 51, 58]}
-                        height={KPI_BAR_HEIGHT}
+                      <MiniBarChart
+                        series={[24, 36, 42, 51, 58]}
+                        height={110}
                         color={theme.warning}
-                        bg={theme.warning ? `${theme.warning}18` : 'rgba(245,158,11,0.12)'}
-                        delay={getKpiDelay(idx) + 0.05}
-                        duration={KPI_ANIM_DURATION}
-                        className="w-full"
+                        ariaLabel={`${s.label} Trend`}
+                        yTicksCount={3}
+                        showGrid
+                        xLabels={['M-4','M-3','M-2','M-1','Now']}
+                        valueFormatter={(v) => `${v}`}
                       />
                     ) : s.chart === 'spark' ? (
-                      <MiniSparkline
-                        data={[40, 46, 49, 51, 55]}
-                        height={KPI_SPARK_HEIGHT}
-                        delay={getKpiDelay(idx) + 0.05}
-                        duration={KPI_ANIM_DURATION}
-                        className="w-full"
-                        colorStart={theme.success}
-                        colorEnd={theme.primary}
+                      <LineChartAnimated
+                        data={[
+                          { label: 'M-4', value: 40 },
+                          { label: 'M-3', value: 46 },
+                          { label: 'M-2', value: 49 },
+                          { label: 'M-1', value: 51 },
+                          { label: 'Now', value: 55 },
+                        ]}
+                        width={520}
+                        height={120}
+                        ariaLabel={`${s.label} Verlauf`}
                         showArea={false}
-                        showDot
+                        showPoints
+                        yTicksCount={3}
+                        gradientArea={false}
+                        padding={{ top: 8, right: 8, bottom: 18, left: 30 }}
+                        tooltipFormatter={(label, value) => `${label} • ${value}`}
+                        responsive
                       />
                     ) : (
                       <MiniDonut
@@ -1292,114 +1347,117 @@ function ChapterSection({ chapter, index, total, messages, locale }: {
 
       {/* Kompakte Inhaltsstichpunkte aus Businessplan/i18n mit Kapitel-Icons */}
       <div className="prose max-w-none">
-        {bullets.length > 0 && (
-          <ul className="grid gap-2.5 md:gap-3 sm:grid-cols-2 list-none p-0 m-0">
-            {bullets.filter((b) => !shouldHideBullet(b)).map((b, i) => (
-              <motion.li
-                key={i}
-                className="flex items-start gap-2.5 text-[13px] md:text-[14px] text-[--color-foreground]"
-                initial={{ opacity: 0, y: 4, scaleY: 0.98, clipPath: 'inset(0 0 100% 0)' }}
-                whileInView={{ opacity: 1, y: 0, scaleY: 1, clipPath: 'inset(0 0 0% 0)' }}
-                transition={{ duration: 0.38, ease: [0.22, 0.8, 0.24, 1], delay: Math.min(i * 0.03, 0.18) }}
-                viewport={{ once: true, margin: "-30% 0px -55% 0px" }}
-                style={{ transformOrigin: 'top left' }}
-              >
-                {(() => {
-                  const I = Icon;
-                  const gradId = `pitch-icon-grad-${chapter.slug}-${i}`;
-                  return (
-                    <motion.i
-                      aria-hidden
-                      className="inline-flex items-center justify-center shrink-0 leading-none"
-                      initial={false}
-                      whileInView={bulletIconKeyframes.animate}
-                      transition={bulletIconKeyframes.transition}
-                      viewport={{ once: true, margin: "-30% 0px -55% 0px" }}
-                      style={{ width: bulletIconSize, height: bulletIconSize }}
-                    >
-                      {chapter.slug === 'risks' ? (
-                        <svg
-                          width={bulletIconSize as any}
-                          height={bulletIconSize as any}
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="none"
-                        >
-                          <defs>
-                            <linearGradient id={gradId} x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                              <stop offset="0%" stopColor={'var(--color-accent-2)'} />
-                              <stop offset="100%" stopColor={'var(--color-accent-3)'} />
-                            </linearGradient>
-                          </defs>
-                          <path
-                            d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+        {(() => {
+          const visibleBullets = bullets.filter((b) => !shouldHideBullet(b));
+          if (visibleBullets.length === 0) return null;
+          return (
+            <motion.ul
+              className="grid gap-2.5 md:gap-3 sm:grid-cols-2 list-none p-0 m-0"
+              variants={bulletContainerVariants}
+              initial="hidden"
+              whileInView="show"
+              viewport={PITCH_VIEWPORT}
+            >
+              {visibleBullets.map((b, i) => (
+                <motion.li
+                  key={i}
+                  className="flex items-start gap-2.5 text-[13px] md:text-[14px] text-[--color-foreground]"
+                  variants={bulletItemVariants}
+                  style={{ transformOrigin: 'top left' }}
+                >
+                  {(() => {
+                    const I = Icon;
+                    const gradId = `pitch-icon-grad-${chapter.slug}-${i}`;
+                    return (
+                      <motion.i
+                        aria-hidden
+                        className="inline-flex items-center justify-center shrink-0 leading-none"
+                        initial={false}
+                        whileInView={bulletIconKeyframes.animate}
+                        transition={bulletIconKeyframes.transition}
+                        viewport={PITCH_VIEWPORT}
+                        style={{ width: bulletIconSize, height: bulletIconSize }}
+                      >
+                        {chapter.slug === 'risks' ? (
+                          <svg
+                            width={bulletIconSize as any}
+                            height={bulletIconSize as any}
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="none"
+                          >
+                            <defs>
+                              <linearGradient id={gradId} x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stopColor={'var(--color-accent-2)'} />
+                                <stop offset="100%" stopColor={'var(--color-accent-3)'} />
+                              </linearGradient>
+                            </defs>
+                            <path
+                              d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                              stroke={`url(#${gradId})`}
+                              strokeWidth={bulletIconStroke as any}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <rect x="10.9" y="8.2" width="2.2" height="6.0" rx="1.1" fill={`url(#${gradId})`} shapeRendering="geometricPrecision" />
+                            <circle cx="12" cy="16" r="1.5" fill={`url(#${gradId})`} />
+                          </svg>
+                        ) : (
+                          <I
+                            className="block w-full h-full"
+                            width={bulletIconSize as any}
+                            height={bulletIconSize as any}
                             stroke={`url(#${gradId})`}
+                            fill="none"
                             strokeWidth={bulletIconStroke as any}
+                            vectorEffect="non-scaling-stroke"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                          />
-                          <rect x="10.9" y="8.2" width="2.2" height="6.0" rx="1.1" fill={`url(#${gradId})`} shapeRendering="geometricPrecision" />
-                          <circle cx="12" cy="16" r="1.5" fill={`url(#${gradId})`} />
-                        </svg>
-                      ) : (
-                        <I
-                          className="block w-full h-full"
-                          width={bulletIconSize as any}
-                          height={bulletIconSize as any}
-                          stroke={`url(#${gradId})`}
-                          fill="none"
-                          strokeWidth={bulletIconStroke as any}
-                          vectorEffect="non-scaling-stroke"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          style={{ shapeRendering: 'geometricPrecision' }}
-                        >
-                          <defs>
-                            <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stopColor={chapter.slug === 'risks' ? 'var(--color-accent-2)' : 'var(--color-accent)'} />
-                              <stop offset="100%" stopColor={'var(--color-accent-3)'} />
-                            </linearGradient>
-                          </defs>
-                        </I>
-                      )}
-                    </motion.i>
-                  );
-                })()}
-                <span>{b}</span>
-              </motion.li>
-            ))}
-          </ul>
-        )}
+                            style={{ shapeRendering: 'geometricPrecision' }}
+                          >
+                            <defs>
+                              <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor={chapter.slug === 'risks' ? 'var(--color-accent-2)' : 'var(--color-accent)'} />
+                                <stop offset="100%" stopColor={'var(--color-accent-3)'} />
+                              </linearGradient>
+                            </defs>
+                          </I>
+                        )}
+                      </motion.i>
+                    );
+                  })()}
+                  <span>{b}</span>
+                </motion.li>
+              ))}
+            </motion.ul>
+          );
+        })()}
       </div>
 
       {/* Mini KPI-Karten für Finance / Traction */}
       {kpiCards.length === 0 && (financeKpis.length > 0 || tractionKpis.length > 0) && (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <motion.div
+          className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+          variants={kpiContainerVariants}
+          initial="hidden"
+          whileInView="show"
+          viewport={PITCH_VIEWPORT}
+        >
           {(financeKpis.length > 0 ? financeKpis : tractionKpis).map((k, i) => (
             <motion.div
               key={`${k.label}-${i}`}
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-30% 0px -55% 0px" }}
-              transition={{ ...defaultTransition, delay: Math.min(i * 0.06, 0.24) }}
-              whileHover={{ y: -2, scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-           >
-              <ElegantCard
-                className="kpi-card kpi-card--spacious kpi-card--hairline rounded-2xl"
-                innerClassName="kpi-card-content p-4 md:p-5 text-center bg-[--color-surface]/70"
-                ariaLabel={`${k.label} KPI Card`}
-                role="group"
-              >
-                <div className="kpi-card-header text-[10px] md:text-[11px] tracking-wide uppercase text-[--color-foreground] opacity-80">{k.label}</div>
-                <div className="kpi-value-row font-semibold [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums]">
-                  <span className="kpi-value">{k.value}</span>
-                </div>
-                {k.sub ? (<div className="kpi-sub">{k.sub}</div>) : null}
-              </ElegantCard>
+              variants={kpiItemVariants}
+              className="rounded-2xl bg-[--color-surface]/70 ring-1 ring-[--color-border-subtle] p-4"
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="text-[11px] tracking-wide uppercase text-[--color-foreground-muted]">{k.label}</div>
+              </div>
+              <div className="text-[15px] md:text-[16px] font-semibold [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums]">
+                {k.value}
+              </div>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       <motion.div

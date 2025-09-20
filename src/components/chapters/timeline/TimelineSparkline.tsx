@@ -4,6 +4,8 @@ import React from "react";
 import { useMessages } from "next-intl";
 import { z } from "zod";
 import SparklineCanvas from "@/components/chapters/timeline/SparklineCanvas";
+import DonutGauge from "@/components/chapters/timeline/DonutGauge";
+import MiniBarChart from "@/components/chapters/timeline/MiniBarChart";
 
 // Hinweis: Keine globale Balkenfarb-Konstante nötig – AnimatedBar wurde entfernt
 
@@ -15,24 +17,55 @@ const GenericSparklineBasic: React.FC<{
   period?: string | null | undefined;
   growthPct?: number | undefined;
   xLabels?: [string, string] | undefined;
-}> = ({ headerLabel, period, growthPct, xLabels }) => {
+  height?: number | undefined; // Gesamthöhe der Komponente in px
+  headerHeight?: number | undefined; // Höhe des Kopfbereichs in px
+  compact?: boolean | undefined;
+  // Feintuning-Weitergabe
+  color?: string | undefined;
+  durationMs?: number | undefined;
+  lineWidth?: number | undefined;
+  glowRadius?: number | undefined;
+  areaAlpha?: number | undefined;
+  maxWidth?: number | undefined; // Maximale Breite in px (z.B. 100)
+  // Optional: Header-Icon
+  icon?: React.ReactNode | undefined;
+  // Optional: Renderer für alternative Visuals (z.B. Donut/Bar). Wenn gesetzt, ersetzt es die Sparkline.
+  renderContent?: ((canvasH: number) => React.ReactNode) | undefined;
+}> = ({ headerLabel, period, growthPct, xLabels, height, headerHeight, compact, color, durationMs, lineWidth, glowRadius, areaAlpha, maxWidth, icon, renderContent }) => {
   const pct = typeof growthPct === 'number' && Number.isFinite(growthPct) ? Math.max(0, Math.min(1000, growthPct)) : undefined;
+  // Wrapper-Ref für ResizeObserver (nur zum Neuzeichnen, ohne eigene Breitenkappung)
+  const wrapperRef = React.useRef<HTMLDivElement | null>(null);
+  // Höhe: bevorzugt Prop, ansonsten moderat (200). Headerhöhe bevorzugt Prop, sonst 32.
+  const totalH = typeof height === 'number' && Number.isFinite(height) ? Math.max(120, Math.floor(height)) : 200;
+  const headH = typeof headerHeight === 'number' && Number.isFinite(headerHeight) ? Math.max(24, Math.floor(headerHeight)) : 32;
+  const canvasH = Math.max(40, totalH - headH);
   return (
-    <div className="w-full select-none">
-      <div className="flex items-center justify-between mb-0.5 md:mb-1">
-        <div className="text-[12px] md:text-[12.5px] font-medium text-[--color-foreground-strong] tracking-[-0.006em] [font-variant-numeric:tabular-nums]">
-          {headerLabel}
+    <div ref={wrapperRef} className="select-none mx-auto w-full" style={{ height: totalH }}>
+      <div className="flex items-center justify-between" style={{ height: headH }}>
+        <div className="flex items-center gap-1.5 text-[12px] md:text-[12.5px] font-medium text-[--color-foreground-strong] tracking-[-0.006em] [font-variant-numeric:tabular-nums]">
+          {icon ? <span aria-hidden className="inline-flex items-center" >{icon}</span> : null}
+          <span>{headerLabel}</span>
         </div>
         <div className="text-[11px] md:text-[11.5px]" title={period ?? undefined}>
           <PeriodBadges period={period ?? null} />
         </div>
       </div>
-      <div className="w-full h-[88px] md:h-[128px] overflow-hidden" aria-label={`${headerLabel}: Entwicklung${period ? `, Zeitraum ${period}` : ''}`} role="img">
-        <SparklineCanvas
-          percent={pct}
-          xLabels={xLabels}
-          ariaLabel={`${headerLabel}: Entwicklung${period ? `, Zeitraum ${period}` : ''}`}
-        />
+      <div className="w-full overflow-hidden" style={{ height: canvasH }} aria-label={`${headerLabel}: Entwicklung${period ? `, Zeitraum ${period}` : ''}`} role="img">
+        {typeof renderContent === 'function' ? (
+          renderContent(canvasH)
+        ) : (
+          <SparklineCanvas
+            percent={pct}
+            xLabels={xLabels}
+            ariaLabel={`${headerLabel}: Entwicklung${period ? `, Zeitraum ${period}` : ''}`}
+            compact={compact}
+            color={color}
+            durationMs={durationMs}
+            lineWidth={lineWidth}
+            glowRadius={glowRadius}
+            areaAlpha={areaAlpha}
+          />
+        )}
       </div>
     </div>
   );
@@ -194,9 +227,9 @@ function usePerformanceFromI18n(): PerfItem[] {
   }, [messages]);
 }
 
-type TimelineSparklineProps = { title: string; subtitle?: string; xLabels?: [string, string] };
+type TimelineSparklineProps = { title: string; subtitle?: string; xLabels?: [string, string]; height?: number; headerHeight?: number; compact?: boolean; contextText?: string; maxWidth?: number };
 
-export function TimelineSparkline({ title, subtitle, xLabels }: TimelineSparklineProps): React.ReactElement | null {
+export function TimelineSparkline({ title, subtitle, xLabels, height, headerHeight, compact = true, contextText, maxWidth = 100 }: TimelineSparklineProps): React.ReactElement | null {
   const perf = usePerformanceFromI18n();
   const match = React.useMemo(() => {
     const hay = `${title} ${subtitle ?? ''}`.toLowerCase();
@@ -234,8 +267,138 @@ export function TimelineSparkline({ title, subtitle, xLabels }: TimelineSparklin
     return [toLabel(norm), 'heute'] as [string, string];
   }, [match]);
 
+  // Heuristik: Stil aus Beschreibung ableiten (Titel/Untertitel/Bullets)
+  const hayRaw = `${title} ${subtitle ?? ''} ${contextText ?? ''}`;
+  const hay = hayRaw.toLowerCase();
+  const isFinance = /(€|eur|revenue|umsatz|gm|gross\s*marg|ltv|cac|payback|mrr|arr|roi|profit|invest|capital|kapital)/i.test(hay);
+  const isTech = /(uptime|latency|sdk|edge|cloud|ros2|trl|ai|ml|robot|humanoid|perception|planning|controls|infra|platform)/i.test(hay);
+  const isTeam = /(team|mitarbeiter|employees|hiring|esop|roles|education|degree|bachelor|master|ph\.d|phd|schule|uni|fh|tu)/i.test(hay);
+  // Optional: Visual-Override Tags [viz:donut|bar|spark]
+  const vizOverride = (() => {
+    const m = /\[\s*viz\s*:\s*(donut|bar|spark)\s*\]/i.exec(hayRaw);
+    return (m ? (m[1]!.toLowerCase() as 'donut'|'bar'|'spark') : undefined);
+  })();
+  // Optional: Palette-Override [pal:finance|tech|team]
+  const palOverride = (() => {
+    const m = /\[\s*pal\s*:\s*(finance|tech|team)\s*\]/i.exec(hayRaw);
+    return m ? m[1]!.toLowerCase() : undefined;
+  })();
+
+  // Farbpaletten (Brand‑freundlich)
+  const palettes: Record<'finance'|'tech'|'team'|'default', string> = {
+    finance: 'rgba(245,158,11,0.86)',   // amber-500
+    tech:    'rgba(6,182,212,0.86)',    // cyan-500
+    team:    'rgba(139,92,246,0.86)',   // violet-500
+    default: 'rgba(16,185,129,0.85)',   // emerald-500
+  };
+  // Default Style – Standard Grün, Kontext kann überschreiben
+  let color: string = palettes.default;
+  let durationMs = 980;
+  let lineWidth = compact ? 1.2 : 1.4;
+  let glowRadius = compact ? 8 : 10;
+  let areaAlpha = compact ? 0.08 : 0.12;
+
+  // Heuristik beeinflusst nur Feintuning (Dauer/Strich/Glow/Fläche), nicht die Farbe
+  if (isFinance) { durationMs = 1200; lineWidth = 1.35; glowRadius = 11; areaAlpha = 0.14; color = palettes.finance; }
+  else if (isTech) { durationMs = 900; lineWidth = 1.2; glowRadius = 8; areaAlpha = 0.08; color = palettes.tech; }
+  else if (isTeam) { durationMs = 1000; lineWidth = 1.25; glowRadius = 9; areaAlpha = 0.10; color = palettes.team; }
+  if (palOverride === 'finance') color = palettes.finance;
+  if (palOverride === 'tech') color = palettes.tech;
+  if (palOverride === 'team') color = palettes.team;
+
+  // Themen-Icon (SVG, leicht, ohne externe Lib)
+  const Icon = (() => {
+    const cls = "h-[14px] w-[14px] opacity-90 animate-[fadeIn_.6s_ease-out]";
+    if (isFinance) return (<svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>);
+    if (isTech) return (<svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M7 21h10"/><path d="M9 7l-2 2 2 2"/><path d="M15 11l2-2-2-2"/></svg>);
+    if (isTeam) return (<svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 21c0-3.314 2.686-6 6-6"/><path d="M22 21c0-3.314-2.686-6-6-6"/></svg>);
+    return null;
+  })();
+  
+  // kleinste Keyframe für Icon-FadeIn
+  const IconAnim = (
+    <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(2px);} to { opacity: 1; transform: translateY(0);} }`}</style>
+  );
+
+  // Datengetriebene Visual-Auswahl
+  const hasSeries = Array.isArray(match?.series) && match!.series!.length >= 3;
+  let mode: 'spark' | 'bar' | 'donut' = 'spark';
+  if (isFinance && typeof growth === 'number') mode = 'donut';
+  else if (hasSeries || isTeam) mode = 'bar';
+  else if (isTech) mode = 'spark';
+  if (vizOverride) mode = vizOverride;
+
+  if (mode === 'donut') {
+    return (
+      <GenericSparklineBasic
+        headerLabel={headerLabel}
+        period={period}
+        growthPct={growth}
+        xLabels={xLabels ?? autoXLabels}
+        height={height}
+        headerHeight={headerHeight}
+        compact={compact}
+        color={color}
+        durationMs={durationMs}
+        lineWidth={lineWidth}
+        glowRadius={glowRadius}
+        areaAlpha={areaAlpha}
+        maxWidth={maxWidth}
+        icon={<>{IconAnim}{Icon}</>}
+        renderContent={(canvasH) => (
+          <div className="w-full h-full flex items-center justify-center">
+            <DonutGauge value={typeof growth === 'number' ? growth : 0} size={Math.min(180, Math.max(96, Math.floor(canvasH)))} label={subtitle ?? undefined} ariaLabel={`${headerLabel}: +${Math.round(growth ?? 0)}%`} color={color} />
+          </div>
+        )}
+      />
+    );
+  }
+
+  if (mode === 'bar') {
+    const series = hasSeries ? (match!.series as number[]) : (typeof match?.employees === 'number' ? [Math.max(1, Math.floor(match!.employees! * 0.6)), match!.employees!] : [40, 60, 80, 100]);
+    return (
+      <GenericSparklineBasic
+        headerLabel={headerLabel}
+        period={period}
+        growthPct={growth}
+        xLabels={xLabels ?? autoXLabels}
+        height={height}
+        headerHeight={headerHeight}
+        compact={compact}
+        color={color}
+        durationMs={durationMs}
+        lineWidth={lineWidth}
+        glowRadius={glowRadius}
+        areaAlpha={areaAlpha}
+        maxWidth={maxWidth}
+        icon={<>{IconAnim}{Icon}</>}
+        renderContent={(canvasH) => (
+          <div className="w-full h-full flex items-center justify-center">
+            <MiniBarChart series={series} height={Math.max(100, Math.floor(canvasH))} ariaLabel={`${headerLabel}: Balkendiagramm`} color={color} />
+          </div>
+        )}
+      />
+    );
+  }
+
+  // Default: Sparkline
   return (
-    <GenericSparklineBasic headerLabel={headerLabel} period={period} growthPct={growth} xLabels={xLabels ?? autoXLabels} />
+    <GenericSparklineBasic
+      headerLabel={headerLabel}
+      period={period}
+      growthPct={growth}
+      xLabels={xLabels ?? autoXLabels}
+      height={height}
+      headerHeight={headerHeight}
+      compact={compact}
+      color={color}
+      durationMs={durationMs}
+      lineWidth={lineWidth}
+      glowRadius={glowRadius}
+      areaAlpha={areaAlpha}
+      maxWidth={maxWidth}
+      icon={<>{IconAnim}{Icon}</>}
+    />
   );
 }
 

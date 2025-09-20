@@ -47,28 +47,28 @@ const CVPeriodBadges: React.FC<{ period?: string | null }> = ({ period }) => {
   if (!fmt) return null;
   const isActive = fmt.end === 'heute';
   return (
-    <div className="flex items-center gap-1.5 text-[11px] md:text-[12px]">
+    <div className="grid grid-cols-[1fr_auto_1fr] w-full items-center gap-1.5 text-[11px] md:text-[12px] [font-variant-numeric:tabular-nums] text-[--color-foreground]">
       {fmt.start && (
-        <span className="px-2.5 py-[2px] rounded-full whitespace-nowrap ring-1 ring-[rgba(148,163,184,0.40)] bg-[rgba(148,163,184,0.12)] text-[--color-foreground-strong]">
+        <span className="justify-self-end px-2.5 py-[2px] rounded-full whitespace-nowrap ring-1 ring-[rgba(148,163,184,0.32)] bg-[rgba(148,163,184,0.10)]">
           {fmt.start}
         </span>
       )}
       <motion.span
         aria-hidden
-        className="h-px w-16 md:w-24 bg-[rgba(148,163,184,0.38)] rounded-full mx-0.5 origin-left"
+        className="justify-self-center h-px w-16 md:w-24 bg-[rgba(148,163,184,0.34)] rounded-full origin-left"
         initial={{ scaleX: 0, opacity: 1 }}
         whileInView={{ scaleX: 1, opacity: 1 }}
         viewport={{ once: true, amount: 0.6, margin: '-40% 0px -40% 0px' }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       />
       {fmt.end && (
         isActive ? (
-          <span className="px-2.5 py-[2px] rounded-full whitespace-nowrap flex items-center gap-1.5 ring-1 ring-[rgba(16,185,129,0.42)] bg-[rgba(16,185,129,0.12)] text-[--color-foreground-strong]">
-            <span className="inline-block w-[7px] h-[7px] rounded-full bg-[rgba(16,185,129,0.95)] animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.75)]" aria-hidden />
+          <span className="justify-self-start px-2.5 py-[2px] rounded-full whitespace-nowrap flex items-center gap-1.5 ring-1 ring-[rgba(16,185,129,0.35)] bg-[rgba(16,185,129,0.10)]">
+            <span className="inline-block w-[6px] h-[6px] rounded-full bg-[rgba(16,185,129,0.92)] animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.55)]" aria-hidden />
             <span className="uppercase tracking-[0.06em] text-[10px] opacity-80" aria-hidden>live</span>
           </span>
         ) : (
-          <span className="px-2.5 py-[2px] rounded-full whitespace-nowrap ring-1 ring-[rgba(148,163,184,0.40)] bg-[rgba(148,163,184,0.12)] text-[--color-foreground-strong]">
+          <span className="justify-self-start px-2.5 py-[2px] rounded-full whitespace-nowrap ring-1 ring-[rgba(148,163,184,0.32)] bg-[rgba(148,163,184,0.10)]">
             {fmt.end}
           </span>
         )
@@ -277,6 +277,8 @@ export const CVTimeline: React.FC<CVTimelineProps> = ({ items, compact, compactL
     mass: 0.9,
     bounce: 0.35,
   };
+  // Globale Stagger-Parameter für Links→Rechts-Einstieg je Zeile
+  const sideStagger = 0.08; // Sekunden Verzögerung für die rechte Seite
   const bounceLeft = {
     hidden: { opacity: 0, x: -24, y: 12, rotate: -1.5 },
     visible: { opacity: 1, x: 0, y: 0, rotate: 0 },
@@ -316,15 +318,7 @@ export const CVTimeline: React.FC<CVTimelineProps> = ({ items, compact, compactL
 
   // Alle Parallax-/Follow-Effekte entfernt – wir nutzen nur IO für currentIdx
 
-  // Hilfsfunktion: erstes Jahr aus Period-String extrahieren
-  const extractYear = (p?: string): string | null => {
-    if (!p) return null;
-    const yrs = (p || '').match(/\d{4}/g) || [];
-    return yrs && yrs.length >= 2 ? (yrs[0] ?? null) : null;
-  };
-
-  const currentItem = dataFiltered[currentIdx] as TimelineItem | undefined;
-  const currentYear = extractYear(currentItem?.period ?? undefined);
+  // (bereinigt) – keine Ableitung des aktuellen Jahres mehr notwendig
 
   return (
     <section ref={sectionRef} className={`relative w-full ${size === 'sm' ? 'py-10 md:py-12' : size === 'md' ? 'py-12 md:py-14' : 'py-14 md:py-18'} scroll-mt-20`} role="region" aria-labelledby={headingId}>
@@ -340,6 +334,31 @@ export const CVTimeline: React.FC<CVTimelineProps> = ({ items, compact, compactL
       )}
 
       <div className="relative w-full max-w-6xl mx-auto px-4">
+        {/* Sticky Header (md+): aktuelles Jahr + Rubrik je nach sichtbarem Item */}
+        {!isDeck && (
+          <div className="hidden md:block sticky top-2 z-[1] mb-2 print:hidden">
+            {(() => {
+              const item = dataFiltered[currentIdx];
+              const kind = item ? getKind(item) : undefined;
+              const kindLabel = kind === 'education' ? t('filter.education', { default: 'Schulisch' }) : t('filter.work', { default: 'Beruflich' });
+              const raw = item?.period ?? '';
+              const parts = raw.replace(/\s+/g, ' ').trim().split(/\s*[–-]\s*/);
+              const toYear = (token: string) => {
+                const m1 = /^(\d{1,2})\/(\d{4})$/.exec(token); if (m1) return m1[2]!;
+                if (/^(heute|now|present|ongoing)$/i.test(token)) return 'heute';
+                const m2 = /^(\d{4})$/.exec(token); if (m2) return m2[1]!; return token;
+              };
+              const label = parts.length === 2 ? `${toYear(parts[0] ?? '')} – ${toYear(parts[1] ?? '')}` : `${toYear(raw)}`;
+              return (
+                <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] ring-1 ring-[var(--color-border)]/80 bg-[var(--color-surface)]/80 supports-[backdrop-filter]:backdrop-blur-sm">
+                  <span className="font-medium text-[--color-foreground-strong] [font-variant-numeric:tabular-nums]">{label}</span>
+                  <span className="opacity-40" aria-hidden>•</span>
+                  <span className="text-[--color-foreground]">{kindLabel}</span>
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
         {showFilters && (
           <div className="mb-4 md:mb-5 grid grid-cols-3 gap-1.5 p-1 rounded-full ring-1 ring-[var(--color-border)] bg-[var(--color-surface)]/70 supports-[backdrop-filter]:backdrop-blur-sm print:hidden" role="tablist" aria-label={t('filter.title', { default: 'Filter' })}>
@@ -436,7 +455,7 @@ export const CVTimeline: React.FC<CVTimelineProps> = ({ items, compact, compactL
           ref={deckRef}
           className={isDeck
             ? `relative flex overflow-x-auto snap-x snap-mandatory gap-4 md:gap-6 pr-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`
-            : `relative flex flex-col ${size === 'sm' ? 'gap-6 md:gap-7' : size === 'md' ? 'gap-7 md:gap-8' : 'gap-8 md:gap-9'}`}
+            : `relative grid md:grid-cols-[minmax(0,1fr)_30px_minmax(0,1fr)] md:gap-x-10 ${size === 'sm' ? 'gap-y-6 md:gap-y-7' : size === 'md' ? 'gap-y-7 md:gap-y-8' : 'gap-y-8 md:gap-y-9'}`}
           aria-label={t('title')}
           {...(isDeck ? { 'aria-roledescription': 'carousel' } : {})}
           role="list"
@@ -449,31 +468,81 @@ export const CVTimeline: React.FC<CVTimelineProps> = ({ items, compact, compactL
             if (e.key === 'End') { e.preventDefault(); el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' }); }
           }} : {})}
         >
-          {/* keine absolute Linie mehr – Mittellinie ist die mittlere Grid‑Spalte pro Item */}
+          {/* Zentrale, dezente Vertikallinie (nur im Grid-Layout, md+) */}
+          {!isDeck && (
+            <div
+              aria-hidden
+              className="hidden md:block pointer-events-none absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px"
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[color:rgba(148,163,184,0.16)] to-transparent" />
+            </div>
+          )}
+          {/* Mittellinie pro Item bleibt die mittlere Grid-Spalte – diese Linie ist rein dekorativ für mehr Tiefe */}
           {dataFiltered.map((item, idx) => {
             const itemId = `cv-item-${idx}`;
             const titleId = `${itemId}-title`;
             const periodId = `${itemId}-period`;
+            const baseDelay = Math.min(idx * 0.04, 0.24);
             return (
               <motion.li
                 key={`${item.period}-${idx}`}
-                className={isDeck ? 'list-none shrink-0 snap-start w-[85%] md:w-[65%] lg:w-[55%] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--color-ring] rounded-xl' : 'list-none w-full'}
+                className={isDeck ? 'list-none shrink-0 snap-start w-[85%] md:w-[65%] lg:w-[55%] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--color-ring] rounded-xl' : 'list-none contents'}
                 {...(isDeck ? { role: 'group', 'aria-roledescription': 'slide', 'aria-label': `${idx + 1} / ${dataFiltered.length}`, 'aria-setsize': dataFiltered.length, 'aria-posinset': idx + 1 } : { role: 'listitem' })}
                 id={`cv-slide-${idx}`}
+                {...(!isDeck ? { initial: { opacity: 0, y: 6 }, whileInView: { opacity: 1, y: 0 } } : {})}
+                {...(!isDeck ? { viewport: { once: true, amount: 0.35, margin: '-12% 0px -12% 0px' } } : {})}
+                {...(!isDeck ? { transition: { duration: 0.4 } } : {})}
               >
                 {!isDeck && (
-                  <div className="w-full">
-                    <div className={`grid grid-cols-1 md:grid-cols-[1fr_40px_1fr] items-stretch ${size === 'sm' ? 'gap-3 md:gap-4' : size === 'md' ? 'gap-4 md:gap-5' : 'gap-5 md:gap-6'} w-full`}>
-                      {/* Linke Spalte (für gerade idx) */}
-                      <div className={`md:col-start-1 ${idx % 2 === 0 ? '' : 'md:invisible md:opacity-0'} flex flex-col items-end`}>
-                        {idx % 2 === 0 && (
+                  <>
+                      {/* Obere Zeile: Jahres-Badges mittig über den Inhalten */}
+                      <div className="md:col-span-3 mb-3 md:mb-4">
+                        <span id={periodId} aria-label={t('period', { default: 'Zeitraum' })} className="block">
+                          <CVPeriodBadges period={item.period} />
+                        </span>
+                      </div>
+
+                      {/* Mittlere Spalte: keine Marker mehr – nur die zentrale Linie bleibt (siehe absolute dekorative Achse oben) */}
+                      <div className="hidden md:block md:col-start-2" aria-hidden />
+
+                      {/* Nebeneinander: links/rechts eigene Container für Text und Animation */}
+                      {/* Linke Seite: je nach Index entweder Sparkline oder Karte */}
+                      <div className={"md:col-start-1 md:justify-self-stretch md:self-stretch w-full"}>
+                        {idx % 2 === 0 ? (
+                          // Even: links Animation
                           <motion.div
-                            className="w-full md:max-w-[92%]"
+                            className="w-full min-h-[200px] flex items-center justify-center"
                             {...(!prefersReduced ? { initial: 'hidden', whileInView: 'visible' as const } : { initial: false })}
                             viewport={{ once: true, amount: 0.35, margin: '-12% 0px -12% 0px' }}
                             variants={bounceLeft}
-                            transition={prefersReduced ? { duration: 0 } : { ...springEnter, delay: Math.min(idx * 0.02, 0.12) }}
-                            style={{ transformOrigin: '5% 50%' }}
+                            transition={prefersReduced ? { duration: 0 } : { ...springEnter, delay: baseDelay }}
+                            style={{ transformOrigin: '100% 50%' }}
+                          >
+                            {(() => {
+                              const matches = item.period.match(/\d{4}/g);
+                              if (matches && matches.length >= 2) {
+                                return (
+                                  <TimelineSparkline title={item.title} {...(item.subtitle ? { subtitle: item.subtitle } : {})} xLabels={[matches[0], matches[matches.length-1]] as [string, string]} height={200} headerHeight={32} contextText={(item.bullets ?? []).join(' ')} />
+                                );
+                              }
+                              if (matches && matches.length === 1) {
+                                return (
+                                  <TimelineSparkline title={item.title} {...(item.subtitle ? { subtitle: item.subtitle } : {})} xLabels={[matches[0], 'heute'] as [string, string]} height={200} headerHeight={32} contextText={(item.bullets ?? []).join(' ')} />
+                                );
+                              }
+                              // Platzhalter, damit 50/50 visuell stabil bleibt
+                              return <div className="h-[200px] w-full rounded-md ring-1 ring-[--color-border-subtle] bg-[--color-surface] opacity-40" aria-hidden />;
+                            })()}
+                          </motion.div>
+                        ) : (
+                          // Odd: links Textkarte
+                          <motion.div
+                            className="w-full min-h-[200px] flex items-stretch"
+                            {...(!prefersReduced ? { initial: 'hidden', whileInView: 'visible' as const } : { initial: false })}
+                            viewport={{ once: true, amount: 0.35, margin: '-12% 0px -12% 0px' }}
+                            variants={bounceLeft}
+                            transition={prefersReduced ? { duration: 0 } : { ...springEnter, delay: baseDelay }}
+                            style={{ transformOrigin: '100% 50%' }}
                           >
                             <TimelineEventCard
                               size={size}
@@ -483,49 +552,23 @@ export const CVTimeline: React.FC<CVTimelineProps> = ({ items, compact, compactL
                               kind={getKind(item)}
                               bulletsId={`${itemId}-bullets`}
                               headerUnderline="none"
-                              periodBadges={
-                                <span id={periodId} aria-label={t('period', { default: 'Zeitraum' })}>
-                                  <CVPeriodBadges period={item.period} />
-                                </span>
-                              }
-                              rightAside={
-                                (() => {
-                                  const matches = item.period.match(/\d{4}/g);
-                                  if (matches && matches.length >= 2) {
-                                    return <TimelineSparkline title={item.title} {...(item.subtitle ? { subtitle: item.subtitle } : {})} xLabels={[matches[0], matches[matches.length-1]] as [string, string]} />;
-                                  }
-                                  return null;
-                                })()
-                              }
-                              asidePosition={'right'}
+                              rightAside={<span data-fullwidth={true} className="hidden" />}
                             />
                           </motion.div>
                         )}
                       </div>
 
-                      {/* Mittlere Spalte: Marker */
-                      }
-                      <div className="relative hidden md:block md:col-start-2">
-                        <motion.div
-                          className="absolute left-1/2 top-2 -translate-x-1/2 w-3 h-3 rounded-full bg-[--color-background] ring-2 ring-[--color-border]"
-                          aria-hidden
-                          initial={prefersReduced ? false : { scale: 0.6, opacity: 0.0 }}
-                          whileInView={prefersReduced ? {} : { scale: 1, opacity: 1 }}
-                          viewport={{ once: true, amount: 0.6, margin: '-30% 0px -30% 0px' }}
-                          transition={prefersReduced ? { duration: 0 } : { ...springEnter, delay: 0.05 }}
-                        />
-                      </div>
-
-                      {/* Rechte Spalte (für ungerade idx) */}
-                      <div className={`md:col-start-3 ${idx % 2 === 1 ? '' : 'md:invisible md:opacity-0'}`}>
-                        {idx % 2 === 1 && (
+                      {/* Rechte Seite: je nach Index entweder Karte oder Sparkline */}
+                      <div className={"md:col-start-3 md:justify-self-stretch md:self-stretch w-full"}>
+                        {idx % 2 === 0 ? (
+                          // Even: rechts Textkarte
                           <motion.div
-                            className="w-full md:max-w-[92%]"
+                            className="w-full min-h-[200px] flex items-stretch"
                             {...(!prefersReduced ? { initial: 'hidden', whileInView: 'visible' as const } : { initial: false })}
                             viewport={{ once: true, amount: 0.35, margin: '-12% 0px -12% 0px' }}
                             variants={bounceRight}
-                            transition={prefersReduced ? { duration: 0 } : { ...springEnter, delay: Math.min(idx * 0.02, 0.12) }}
-                            style={{ transformOrigin: '95% 50%' }}
+                            transition={prefersReduced ? { duration: 0 } : { ...springEnter, delay: baseDelay + sideStagger }}
+                            style={{ transformOrigin: '0% 50%' }}
                           >
                             <TimelineEventCard
                               size={size}
@@ -535,22 +578,33 @@ export const CVTimeline: React.FC<CVTimelineProps> = ({ items, compact, compactL
                               kind={getKind(item)}
                               bulletsId={`${itemId}-bullets`}
                               headerUnderline="none"
-                              periodBadges={
-                                <span id={periodId} aria-label={t('period', { default: 'Zeitraum' })}>
-                                  <CVPeriodBadges period={item.period} />
-                                </span>
-                              }
-                              rightAside={
-                                (() => {
-                                  const matches = item.period.match(/\d{4}/g);
-                                  if (matches && matches.length >= 2) {
-                                    return <TimelineSparkline title={item.title} {...(item.subtitle ? { subtitle: item.subtitle } : {})} xLabels={[matches[0], matches[matches.length-1]] as [string, string]} />;
-                                  }
-                                  return null;
-                                })()
-                              }
-                              asidePosition={'left'}
+                              rightAside={<span data-fullwidth={true} className="hidden" />}
                             />
+                          </motion.div>
+                        ) : (
+                          // Odd: rechts Animation
+                          <motion.div
+                            className="w-full min-h-[200px] flex items-center justify-center"
+                            {...(!prefersReduced ? { initial: 'hidden', whileInView: 'visible' as const } : { initial: false })}
+                            viewport={{ once: true, amount: 0.35, margin: '-12% 0px -12% 0px' }}
+                            variants={bounceRight}
+                            transition={prefersReduced ? { duration: 0 } : { ...springEnter, delay: baseDelay + sideStagger }}
+                            style={{ transformOrigin: '0% 50%' }}
+                          >
+                            {(() => {
+                              const matches = item.period.match(/\d{4}/g);
+                              if (matches && matches.length >= 2) {
+                                return (
+                                  <TimelineSparkline title={item.title} {...(item.subtitle ? { subtitle: item.subtitle } : {})} xLabels={[matches[0], matches[matches.length-1]] as [string, string]} height={200} headerHeight={32} contextText={(item.bullets ?? []).join(' ')} />
+                                );
+                              }
+                              if (matches && matches.length === 1) {
+                                return (
+                                  <TimelineSparkline title={item.title} {...(item.subtitle ? { subtitle: item.subtitle } : {})} xLabels={[matches[0], 'heute'] as [string, string]} height={200} headerHeight={32} contextText={(item.bullets ?? []).join(' ')} />
+                                );
+                              }
+                              return <div className="h-[200px] w-full rounded-md ring-1 ring-[--color-border-subtle] bg-[--color-surface] opacity-40" aria-hidden />;
+                            })()}
                           </motion.div>
                         )}
                       </div>
@@ -583,26 +637,23 @@ export const CVTimeline: React.FC<CVTimelineProps> = ({ items, compact, compactL
                               kind={getKind(item)}
                               bulletsId={`${itemId}-bullets`}
                               headerUnderline="none"
-                              periodBadges={
-                                <span id={periodId} aria-label={t('period', { default: 'Zeitraum' })}>
-                                  <CVPeriodBadges period={item.period} />
-                                </span>
-                              }
                               rightAside={
                                 (() => {
                                   const matches = item.period.match(/\d{4}/g);
                                   if (matches && matches.length >= 2) {
-                                    return <TimelineSparkline title={item.title} {...(item.subtitle ? { subtitle: item.subtitle } : {})} xLabels={[matches[0], matches[matches.length-1]] as [string, string]} />;
+                                    return <TimelineSparkline title={item.title} {...(item.subtitle ? { subtitle: item.subtitle } : {})} xLabels={[matches[0], matches[matches.length-1]] as [string, string]} height={140} headerHeight={28} contextText={(item.bullets ?? []).join(' ')} />;
+                                  }
+                                  if (matches && matches.length === 1) {
+                                    return <TimelineSparkline title={item.title} {...(item.subtitle ? { subtitle: item.subtitle } : {})} xLabels={[matches[0], 'heute'] as [string, string]} height={140} headerHeight={28} contextText={(item.bullets ?? []).join(' ')} />;
                                   }
                                   return null;
                                 })()
                               }
-                              asidePosition={'left'}
+                              asidePosition={idx % 2 === 0 ? 'left' : 'right'}
                             />
                           </motion.div>
                         </div>
-                    </div>
-                  </div>
+                  </>
                 )}
               </motion.li>
             );

@@ -31,7 +31,7 @@ export default async function TractionKPIsPage() {
   return (
     <div className="space-y-6">
       <div className="prose prose-sm max-w-none [font-feature-settings:'ss01','ss02','liga','clig','tnum'] px-3 sm:px-0">
-        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong] text-[clamp(18px,5vw,22px)] sm:text-[clamp(18px,2vw,22px)]">
+        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong]">
           {chapterTitle}
         </h1>
         <span id="traction" className="sr-only" aria-hidden="true" />

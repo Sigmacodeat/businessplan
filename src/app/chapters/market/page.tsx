@@ -194,7 +194,7 @@ export default async function MarketAnalysisPage() {
   return (
     <div className="space-y-6 md:space-y-8">
       <div className="prose prose-sm max-w-none [font-feature-settings:'ss01','ss02','liga','clig','tnum']">
-        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong] text-[clamp(18px,2vw,22px)]">{chapterTitle}</h1>
+        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong]">{chapterTitle}</h1>
 
         {/* KPI-Stat-Karten (Market) – 1:1 Optik wie Kapitel 2 */}
         <SectionDelay delayMs={0}>
@@ -257,7 +257,7 @@ export default async function MarketAnalysisPage() {
                         </div>
                       )}
                     </div>
-                    <div className="font-semibold text-[--color-foreground-strong] [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums] text-[15px] md:text-[16px] leading-snug">
+                    <div className="kpi-value-row [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums]">
                       <span className="whitespace-normal break-words" title={String(s.value)}>{String(s.value)}</span>
                     </div>
                     <div className="mx-auto mt-2 h-px w-8/12 bg-[--color-border-subtle]/25" aria-hidden />
