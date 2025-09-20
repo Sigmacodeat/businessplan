@@ -19,6 +19,7 @@ interface LanguageItem {
 interface CVSkillsProps {
   skills?: SkillCategory[];
   languages?: LanguageItem[];
+  hideInnerTitles?: boolean;
 }
 
 // Zod Schemas for validation
@@ -35,7 +36,7 @@ const LanguageItemSchema = z.object({
 const SkillCategoriesSchema = z.array(SkillCategorySchema);
 const LanguagesSchema = z.array(LanguageItemSchema);
 
-export default function CVSkills({ skills, languages }: CVSkillsProps) {
+export default function CVSkills({ skills, languages, hideInnerTitles }: CVSkillsProps) {
   const t = useTranslations("cv");
   const messages = useMessages();
 
@@ -96,15 +97,17 @@ export default function CVSkills({ skills, languages }: CVSkillsProps) {
       {/* Skills Section */}
       {validatedSkills.length > 0 && (
         <section className="space-y-8">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6 }}
-            className="text-2xl md:text-3xl font-semibold tracking-tight text-[--color-foreground-strong]"
-          >
-            {t("skills.title", { default: "Kenntnisse & Fähigkeiten" })}
-          </motion.h2>
+          {!hideInnerTitles && (
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.6 }}
+              className="text-2xl md:text-3xl font-semibold tracking-tight text-[--color-foreground-strong]"
+            >
+              {t("skills.title", { default: "Kenntnisse & Fähigkeiten" })}
+            </motion.h2>
+          )}
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
             {validatedSkills.map((category, categoryIndex) => (
@@ -116,7 +119,7 @@ export default function CVSkills({ skills, languages }: CVSkillsProps) {
                 transition={{ duration: 0.6, delay: categoryIndex * 0.1 }}
                 className="group"
               >
-                <div className="h-full bg-[--color-surface]/30 backdrop-blur-sm rounded-2xl border border-[--color-border-subtle]/20 p-6 shadow-sm hover:shadow-md transition-all duration-300 hover:border-[--color-border-subtle]/40">
+                <div className="relative h-full bg-[--color-surface] rounded-[14px] p-5 md:p-6 shadow-none transition-shadow duration-300">
                   <h3 className="text-lg md:text-xl font-semibold text-[--color-foreground-strong] mb-4 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-gradient-to-r from-[--color-primary] to-[--color-primary-dark] opacity-80 group-hover:opacity-100 transition-opacity" />
                     {category.name}
@@ -131,13 +134,14 @@ export default function CVSkills({ skills, languages }: CVSkillsProps) {
                         transition={{ duration: 0.4, delay: (categoryIndex * 0.1) + (itemIndex * 0.05) }}
                         className="flex items-start gap-2.5"
                       >
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[--color-border-subtle] flex-shrink-0" />
-                        <span className="text-[--color-foreground] text-sm md:text-base leading-relaxed">
+                        <span className="mt-2 w-[6px] h-[6px] rounded-full bg-emerald-400/60 ring-1 ring-emerald-300/40 shadow-[0_0_0_2px_rgba(0,0,0,0.04)] flex-shrink-0" />
+                        <span className="text-[--color-foreground] text-[13px] md:text-[14px] leading-relaxed">
                           {item}
                         </span>
                       </motion.li>
                     ))}
                   </ul>
+                  {/* Overlays entfernt, um jeden weißen Rand/Glanz zu vermeiden */}
                 </div>
               </motion.div>
             ))}
@@ -148,15 +152,17 @@ export default function CVSkills({ skills, languages }: CVSkillsProps) {
       {/* Languages Section */}
       {validatedLanguages.length > 0 && (
         <section className="space-y-8">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-2xl md:text-3xl font-semibold tracking-tight text-[--color-foreground-strong]"
-          >
-            {t("languages.title", { default: "Sprachen" })}
-          </motion.h2>
+          {!hideInnerTitles && (
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="text-2xl md:text-3xl font-semibold tracking-tight text-[--color-foreground-strong]"
+            >
+              {t("languages.title", { default: "Sprachen" })}
+            </motion.h2>
+          )}
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {validatedLanguages.map((language, index) => (
@@ -168,7 +174,7 @@ export default function CVSkills({ skills, languages }: CVSkillsProps) {
                 transition={{ duration: 0.5, delay: 0.3 + (index * 0.1) }}
                 className="group"
               >
-                <div className="h-full bg-gradient-to-br from-[--color-surface]/20 to-[--color-surface]/30 backdrop-blur-sm rounded-xl border border-[--color-border-subtle]/20 p-4 shadow-sm hover:shadow-md transition-all duration-300 hover:border-[--color-border-subtle]/40">
+                <div className="relative h-full bg-[--color-surface] rounded-[12px] p-4 shadow-none transition-shadow duration-300">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-[--color-foreground-strong] text-base md:text-lg">
                       {language.name}
@@ -187,6 +193,7 @@ export default function CVSkills({ skills, languages }: CVSkillsProps) {
                       className="h-full bg-gradient-to-r from-[--color-primary] to-[--color-primary-dark] rounded-full"
                     />
                   </div>
+                  {/* Overlays entfernt, um jeden weißen Rand/Glanz zu vermeiden */}
                 </div>
               </motion.div>
             ))}

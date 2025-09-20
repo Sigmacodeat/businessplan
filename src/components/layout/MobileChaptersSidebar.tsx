@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 
 export default function MobileChaptersSidebar({ currentChapter }: { currentChapter?: number }) {
   const [open, setOpen] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<string>("");
   const t = useTranslations();
   const panelRef = useRef<HTMLDivElement | null>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
@@ -46,6 +47,12 @@ export default function MobileChaptersSidebar({ currentChapter }: { currentChapt
     };
   }, [open, onKeyDown]);
 
+  // Live-Region: Status-Ansage bei Öffnen/Schließen
+  useEffect(() => {
+    const msg = open ? `${t('toc.title', { default: 'Inhaltsverzeichnis' })} geöffnet` : `${t('toc.title', { default: 'Inhaltsverzeichnis' })} geschlossen`;
+    setStatusMsg(msg);
+  }, [open, t]);
+
   // Close drawer on route/path change
   useEffect(() => {
     // Close unconditionally on route change (setting to same state is a no-op)
@@ -80,6 +87,8 @@ export default function MobileChaptersSidebar({ currentChapter }: { currentChapt
 
   return (
     <div className="print:hidden">
+      {/* Live-Region für Screenreader */}
+      <div role="status" aria-live="polite" className="sr-only">{statusMsg}</div>
       {/* Vertikaler, dezenter Edge-Button (nur mobil sichtbar) */}
       <button
         type="button"

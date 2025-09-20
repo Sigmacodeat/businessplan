@@ -33,9 +33,11 @@ import content from './content'
 import workPackagesDetailed from './workPackagesDetailed'
 import problem from './problem'
 import assumptions from './assumptions'
+import common from './common'
 
 const de = {
   content,
+  common,
   businessModel,
   market,
   impact,

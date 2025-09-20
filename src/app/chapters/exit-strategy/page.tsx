@@ -6,7 +6,7 @@ import { buildLocalePath } from '@/i18n/path';
 import InViewFade from '@/components/animation/InViewFade';
 import SectionCard from '@components/chapters/SectionCard';
 import { NumberedList, NumberedItem } from '@components/chapters/NumberedList';
-import { Card, CardContent } from '@/components/ui/card';
+import ElegantCard from '@/components/ui/ElegantCard';
 import MiniSparkline from '@/components/charts/MiniSparkline';
 import MiniBar from '@/components/charts/MiniBar';
 import MiniDonut from '@/components/charts/MiniDonut';
@@ -48,7 +48,7 @@ export default async function ExitStrategyPage() {
   return (
     <div className="space-y-6">
       <div className="prose prose-sm max-w-none [font-feature-settings:'ss01','ss02','liga','clig','tnum']">
-        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong] text-[clamp(18px,2vw,22px)]">{chapterTitle}</h1>
+        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong]">{chapterTitle}</h1>
 
         {/* Option Cards (A/B/C) */}
         <span id="exit-options" className="sr-only" aria-hidden="true" />
@@ -61,8 +61,13 @@ export default async function ExitStrategyPage() {
             const list = opt.key === 'a' ? a : opt.key === 'b' ? b : c;
             return (
               <InViewFade key={opt.key} delay={0.04 + idx * 0.05} className="h-full">
-                <Card className="h-full kpi-card kpi-card--compact kpi-card--hairline">
-                  <div className="kpi-card-header border-b border-zinc-600/25">
+                <ElegantCard
+                  className="h-full"
+                  innerClassName="relative h-full rounded-[12px] bg-[--color-surface] p-0"
+                  ariaLabel={`${title} Option Card`}
+                  role="group"
+                >
+                  <div className="border-b border-zinc-600/25 px-4 py-3 md:px-4.5">
                     <div className="flex items-center gap-2">
                       <span aria-hidden className="inline-flex h-[14px] w-[14px] items-center justify-center rounded-sm bg-[--color-muted] text-[10px] text-[--color-foreground-muted]/80">•</span>
                       <div className="not-prose w-full leading-tight font-medium text-[--color-foreground-muted] tracking-tight whitespace-nowrap overflow-hidden text-ellipsis" style={{ fontSize: 'clamp(10px, 0.9vw, 15px)' }}>
@@ -82,8 +87,7 @@ export default async function ExitStrategyPage() {
                       </details>
                     </div>
                   </div>
-                  <CardContent className="kpi-card-content">
-                    {/* Füge einen Titel über dem Diagramm hinzu */}
+                  <div className="p-3 md:p-3.5">
                     <div className="text-xs font-medium text-[--color-foreground-muted] text-center mb-1">
                       {chartTitle}
                     </div>
@@ -99,8 +103,8 @@ export default async function ExitStrategyPage() {
                         {list.slice(0, 4).map((x, i) => (<li key={i}>{x}</li>))}
                       </ul>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </ElegantCard>
               </InViewFade>
             );
           })}

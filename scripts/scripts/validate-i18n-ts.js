@@ -6,7 +6,9 @@ const { loadTsModule } = require('./load-ts-module');
 const { extractKeys, buildTypeMap, compareTypes } = require('./i18n-validator');
 
 function main() {
-  const root = path.join(__dirname, '../src/i18n/locales');
+  // scripts/scripts/* -> project root is two levels up
+  const projectRoot = path.join(__dirname, '..', '..');
+  const root = path.join(projectRoot, 'src', 'i18n', 'locales');
   const enPath = path.join(root, 'en', 'bp.ts');
   const dePath = path.join(root, 'de', 'bp.ts');
 

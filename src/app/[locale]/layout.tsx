@@ -5,10 +5,11 @@ export default async function LocaleLayout({
   params
 }: {
   children: React.ReactNode;
-  params: Promise<{ locale?: string }>;
+  // Unterstützt sowohl Promise- als auch Objekt-Form, je nach Next.js Typauflösung
+  params: any;
 }) {
-  const { locale } = await params;
-  const l = locale === 'en' ? 'en' : 'de';
+  const resolved = params && typeof params.then === 'function' ? await params : params;
+  const l = resolved?.locale === 'en' ? 'en' : 'de';
   setRequestLocale(l);
   return children;
 }

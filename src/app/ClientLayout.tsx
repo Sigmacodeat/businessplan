@@ -30,9 +30,16 @@ export default function ClientLayout({
       {/* Synchronisiert data-theme mit der aktiven Klasse */}
       <ThemeSync />
       <div>
+        {/* Skip-Link für Tastaturnutzer */}
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[1000] focus:bg-[--color-surface] focus:text-[--color-foreground] focus:ring-2 focus:ring-[--color-primary] focus:px-3 focus:py-2 focus:rounded-md shadow-md"
+        >
+          Zum Inhalt springen
+        </a>
         <MotionProvider>
           <Header />
-          <main className="min-h-screen pt-16">
+          <main id="main" role="main" className="min-h-screen pt-16">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               {mounted ? children : <div className="min-h-[60vh]" />}
             </div>

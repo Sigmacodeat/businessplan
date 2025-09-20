@@ -5,7 +5,7 @@ import { getMessages } from '@/i18n/messages';
 import { chapters } from '../chapters.config';
 import { buildLocalePath } from '@/i18n/path';
 import InViewFade from '@/components/animation/InViewFade';
-import { Card } from '@/components/ui/card';
+import ElegantCard from '@/components/ui/ElegantCard';
 import MiniBar from '@/components/charts/MiniBar';
 import MiniDonut from '@/components/charts/MiniDonut';
 import MiniSparkline from '@/components/charts/MiniSparkline';
@@ -109,7 +109,7 @@ export default async function BusinessModelPage() {
   return (
     <div className="space-y-8">
       <div className="prose prose-sm max-w-none [font-feature-settings:'ss01','ss02','liga','clig','tnum']">
-        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong] text-[clamp(18px,2vw,22px)]">
+        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong]">
           {chapterTitle}
         </h1>
         {/* Inhaltsverzeichnis entfernt */}
@@ -123,10 +123,14 @@ export default async function BusinessModelPage() {
         >
           {kpiCards.map((s, idx) => (
             <InViewFade key={`${String(s.label)}-${idx}`} delay={idx * 0.05} className="h-full">
-              <Card elevated={false} className="kpi-card kpi-card--spacious kpi-card--hairline h-full bg-transparent shadow-none hover:shadow-none transition-all duration-200">
-                <div className="kpi-card kpi-card--bm relative h-full rounded-2xl">
-                  <div className="kpi-card-content p-5 md:p-7 pb-7 md:pb-8 text-center">
-                  <div className="flex items-center justify-center gap-2 text-[10px] md:text-[11px] tracking-wide uppercase mb-1.5 text-[--color-foreground-muted]">
+              <ElegantCard
+                className="h-full"
+                innerClassName="relative h-full rounded-[12px] bg-[--color-surface] p-4 md:p-5 lg:p-6"
+                ariaLabel={`${s.label} KPI Card`}
+                role="group"
+              >
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 text-[10px] md:text-[11px] tracking-wide uppercase mb-2 text-[--color-foreground-muted]">
                     {('Icon' in s && s.Icon) ? <s.Icon className="h-3.5 w-3.5 text-[--color-foreground-muted]" aria-hidden /> : null}
                     <span>{s.label}</span>
                   </div>
@@ -165,17 +169,19 @@ export default async function BusinessModelPage() {
                       />
                     )}
                   </div>
-                  <div className="kpi-value-row font-bold text-[--color-foreground-strong] [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums] kpi-value">
-                    <span className="whitespace-normal break-words leading-tight" title={String(s.value)}>{String(s.value)}</span>
+                  {/* Wert und Subtitel im edlen CV-Stil */}
+                  <div className="kpi-value-row [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums]">
+                    <span className="whitespace-normal break-words" title={String(s.value)}>{String(s.value)}</span>
                   </div>
-                  <div className="mx-auto mt-2.5 h-px w-8/12 bg-[--color-border-subtle]/20" aria-hidden />
-                  <div className="kpi-sub mt-1.5 one-line" title={s.sub as string}>{s.sub as string}</div>
+                  <div className="mx-auto mt-2 h-px w-8/12 bg-[--color-border-subtle]/25" aria-hidden />
+                  <div className="mt-1.5 text-[12px] md:text-[12.5px] text-[--color-foreground] opacity-85" title={s.sub as string}>
+                    {s.sub as string}
+                  </div>
                 </div>
-              </div>
-            </Card>
-          </InViewFade>
-        ))}
-      </div>
+              </ElegantCard>
+            </InViewFade>
+          ))}
+        </div>
 
         {/* Value Proposition */}
         <InViewFade as="section" delay={0.02}>

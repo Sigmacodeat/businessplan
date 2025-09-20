@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import ElegantCard from '@/components/ui/ElegantCard';
 import CountUp from '@/components/charts/CountUp';
 import { useTranslations } from 'next-intl';
 import { z } from 'zod'; 
@@ -49,15 +49,19 @@ export function KPISection({ data, layout = 'grid', title, description }: KPISec
         : 'space-y-4'
       }>
         {[1, 2, 3].map((id) => (
-          <Card key={id} className="kpi-card kpi-card--hairline">
-            <CardHeader className="kpi-card-header">
+          <ElegantCard
+            key={id}
+            className="h-full"
+            innerClassName="relative h-full rounded-[12px] bg-[--color-surface] p-4 md:p-5 lg:p-6"
+            role="group"
+            ariaLabel="KPI Skeleton Card"
+          >
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-2/3" />
               <Skeleton className="h-6 w-3/4" />
-            </CardHeader>
-            <CardContent className="kpi-card-content">
-              <Skeleton className="h-8 w-full mt-2" />
-              <Skeleton className="h-4 w-2/3 mt-2" />
-            </CardContent>
-          </Card>
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          </ElegantCard>
         ))}
       </div>
     );
@@ -87,25 +91,30 @@ export function KPISection({ data, layout = 'grid', title, description }: KPISec
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...defaultTransition }}
           >
-            <Card aria-label={`${t(item.title, { default: item.title })}: ${item.value}`} className="kpi-card kpi-card--hairline">
-              <CardHeader className="kpi-card-header">
-                <CardTitle className="not-prose block w-full leading-tight font-medium text-[--color-foreground-muted] tracking-tight whitespace-nowrap overflow-hidden text-ellipsis" style={{ fontSize: 'clamp(10px, 0.9vw, 15px)' }}>
+            <ElegantCard
+              ariaLabel={`${t(item.title, { default: item.title })}: ${item.value}`}
+              role="group"
+              className="h-full"
+              innerClassName="relative h-full rounded-[12px] bg-[--color-surface] p-4 md:p-5 lg:p-6"
+            >
+              <div className="text-center">
+                <div className="text-[10px] md:text-[11px] tracking-wide uppercase mb-2 text-[--color-foreground-muted] one-line">
                   {t(item.title, { default: item.title })}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="kpi-card-content">
-                <div className="kpi-value-row font-bold my-1">
+                </div>
+                <div className="font-semibold text-[--color-foreground-strong] [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums] text-[17px] md:text-[18px] leading-tight">
                   <CountUp
                     to={item.value}
                     durationMs={2500}
-                    className="text-gradient"
                   />
                 </div>
+                <div className="mx-auto mt-2 h-px w-8/12 bg-[--color-border-subtle]/25" aria-hidden />
                 {item.description && (
-                  <p className="kpi-sub text-center">{t(item.description, { default: item.description })}</p>
+                  <div className="mt-1.5 text-[12px] md:text-[12.5px] text-[--color-foreground] opacity-85 one-line">
+                    {t(item.description, { default: item.description })}
+                  </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </ElegantCard>
           </motion.div>
         ))}
       </div>

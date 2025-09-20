@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { getTranslations, getLocale } from 'next-intl/server';
 import { getMessages } from '@/i18n/messages';
 import { chapters } from '../chapters.config';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import ElegantCard from '@/components/ui/ElegantCard';
 import InViewFade from '@/components/animation/InViewFade';
 import MiniBar from '@/components/charts/MiniBar';
 import MiniDonut from '@/components/charts/MiniDonut';
@@ -35,6 +35,8 @@ export default async function ExecutiveSummaryPage() {
   const chapterIndex = 1;
   const chapterTitle = `${locale.startsWith('de') ? 'Kapitel' : 'Chapter'} ${chapterIndex} – ${tBp('sections.executive', { defaultMessage: 'Executive Summary' })}`;
   const theme = getChapterTheme('executive');
+  // Zweistellige Nummern (01.03)
+  const fmt2 = (n: number) => String(n).padStart(2, '0');
 
   // Helper: normalize a string or array-like content into bullet items when appropriate
   const normalizeBullets = (val: unknown): string[] | null => {
@@ -180,60 +182,62 @@ export default async function ExecutiveSummaryPage() {
         </h1>
         {/* Kein dekorativer Divider – ruhiger PDF-Look */}
         {/* Profilzeile entfernt – konsolidiert nur im Lebenslauf sichtbar */}
-        {/* KPI-Stat-Karten - Dezent & Edel */}
+        {/* KPI-Stat-Karten - Dezent & Edel (ElegantCard) */}
         <div className="not-prose mt-4 grid gap-4 md:gap-5 sm:grid-cols-2 lg:grid-cols-4 items-stretch">
           {statCards.map((s, idx) => (
             <InViewFade key={`${String(s.label)}-${idx}`} delay={idx * 0.05} className="h-full">
-              <Card elevated={false} className="kpi-card kpi-card--spacious kpi-card--hairline h-full bg-transparent shadow-none hover:shadow-none transition-all duration-200">
-                <div className="kpi-card kpi-card--bm relative h-full rounded-2xl">
-                  <div className="kpi-card-content p-3 md:p-4 pb-7 md:pb-8 text-center">
-                    <div className="flex items-center gap-2 text-[10px] md:text-[11px] font-medium tracking-wide uppercase mb-2 text-[--color-foreground]">
-                      {('Icon' in s && s.Icon) ? <s.Icon className="h-3.5 w-3.5 text-[--color-foreground-muted]" aria-hidden /> : null}
-                      <span>{s.label}</span>
-                    </div>
-                    <div className="mb-3 w-full kpi-visual">
-                      {s.kind === 'cac' ? (
-                        <MiniBar
-                          data={[24, 36, 42, 51, 58]}
-                          height={KPI_BAR_HEIGHT}
-                          color={theme.warning}
-                          bg={theme.warning ? `${theme.warning}18` : 'rgba(245,158,11,0.12)'}
-                          delay={getKpiDelay(idx)}
-                          duration={KPI_ANIM_DURATION}
-                          className="w-full"
-                        />
-                      ) : s.kind === 'arpu' || s.kind === 'ltv' ? (
-                        <MiniSparkline
-                          data={s.kind === 'arpu' ? [40, 46, 49, 51, 55] : [180, 240, 300, 420, 560]}
-                          height={KPI_SPARK_HEIGHT}
-                          delay={getKpiDelay(idx)}
-                          duration={KPI_ANIM_DURATION}
-                          className="w-full"
-                          colorStart={s.kind === 'arpu' ? theme.success : theme.warning}
-                          colorEnd={s.kind === 'arpu' ? theme.primary : theme.warning}
-                          showArea={false}
-                          showDot
-                        />
-                      ) : (
-                        <MiniDonut
-                          value={0.7}
-                          color={theme.primary}
-                          bg={`${theme.primary}20`}
-                          delay={getKpiDelay(idx)}
-                          duration={KPI_ANIM_DURATION}
-                          className={KPI_DONUT_CLASS}
-                        />
-                      )}
-                    </div>
-                    <div className="text-center space-y-1">
-                      <div className="kpi-value-row font-bold text-[--color-foreground-strong] [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums] kpi-value">
-                        {s.value}
-                      </div>
-                      <div className="kpi-sub text-[10px] md:text-[11px] leading-tight text-[--color-foreground] one-line">{s.sub}</div>
-                    </div>
+              <ElegantCard
+                className="h-full"
+                innerClassName="relative h-full rounded-[12px] bg-[--color-surface] p-4 md:p-5 lg:p-6"
+                ariaLabel={`${s.label} KPI Card`}
+                role="group"
+              >
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 text-[10px] md:text-[11px] tracking-wide uppercase mb-2 text-[--color-foreground-muted]">
+                    {('Icon' in s && s.Icon) ? <s.Icon className="h-3.5 w-3.5 text-[--color-foreground-muted]" aria-hidden /> : null}
+                    <span>{s.label}</span>
                   </div>
+                  <div className="mb-3 kpi-visual">
+                    {s.kind === 'cac' ? (
+                      <MiniBar
+                        data={[24, 36, 42, 51, 58]}
+                        height={KPI_BAR_HEIGHT}
+                        color={theme.warning}
+                        bg={theme.warning ? `${theme.warning}18` : 'rgba(245,158,11,0.12)'}
+                        delay={getKpiDelay(idx)}
+                        duration={KPI_ANIM_DURATION}
+                        className="w-full"
+                      />
+                    ) : s.kind === 'arpu' || s.kind === 'ltv' ? (
+                      <MiniSparkline
+                        data={s.kind === 'arpu' ? [40, 46, 49, 51, 55] : [180, 240, 300, 420, 560]}
+                        height={KPI_SPARK_HEIGHT}
+                        delay={getKpiDelay(idx)}
+                        duration={KPI_ANIM_DURATION}
+                        className="w-full"
+                        colorStart={s.kind === 'arpu' ? theme.success : theme.warning}
+                        colorEnd={s.kind === 'arpu' ? theme.primary : theme.warning}
+                        showArea={false}
+                        showDot
+                      />
+                    ) : (
+                      <MiniDonut
+                        value={0.7}
+                        color={theme.primary}
+                        bg={`${theme.primary}20`}
+                        delay={getKpiDelay(idx)}
+                        duration={KPI_ANIM_DURATION}
+                        className={KPI_DONUT_CLASS}
+                      />
+                    )}
+                  </div>
+                  <div className="font-semibold text-[--color-foreground-strong] [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums] text-[17px] md:text-[18px] leading-tight">
+                    {s.value}
+                  </div>
+                  <div className="mx-auto mt-2 h-px w-8/12 bg-[--color-border-subtle]/25" aria-hidden />
+                  <div className="mt-1.5 text-[12px] md:text-[12.5px] text-[--color-foreground] opacity-85 one-line">{s.sub}</div>
                 </div>
-              </Card>
+              </ElegantCard>
             </InViewFade>
           ))}
         </div>
@@ -260,102 +264,90 @@ export default async function ExecutiveSummaryPage() {
           </div>
         )}
 
-        {/* Kompaktes Summary (Problem/Solution/Market) – ohne Grid, vertikal */}
-        <div className="mt-5 space-y-6">
-          <Card className="h-full bg-transparent shadow-none border-0">
-            <CardHeader className="p-3">
-              <CardTitle className="not-prose text-[13px] md:text-[15px] leading-tight font-semibold tracking-tight text-[--color-foreground]">{`${chapterIndex}.1 – ${t('sections.problem.title')}`}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 pt-0 prose prose-sm md:prose-base max-w-none prose-p:leading-relaxed">
+        {/* Kompaktes Summary (Problem/Solution/Market) – nutzt globale Utilities für Konsistenz */}
+        <div className="mt-6 space-y-0">
+          <div className="subchapter-block">
+            <div className="not-prose subchapter-title">{`${fmt2(chapterIndex)}.${fmt2(1)} – ${t('sections.problem.title')}`}</div>
+            <div className="prose max-w-none prose-p:leading-relaxed pt-1 subchapter-body">
               {(() => {
                 const val = exec?.sections?.problem?.content ?? t('sections.problem.content');
                 const bullets = normalizeBullets(val);
                 return bullets ? <BulletList items={bullets} /> : <p>{val}</p>;
               })()}
-            </CardContent>
-          </Card>
-          <Card className="h-full bg-transparent shadow-none border-0">
-            <CardHeader className="p-3">
-              <CardTitle className="not-prose text-[13px] md:text-[15px] leading-tight font-semibold tracking-tight text-[--color-foreground]">{`${chapterIndex}.2 – ${t('sections.solution.title')}`}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
+            </div>
+          </div>
+          <div className="subchapter-block">
+            <div className="not-prose subchapter-title">{`${fmt2(chapterIndex)}.${fmt2(2)} – ${t('sections.solution.title')}`}</div>
+            <div className="pt-1 subchapter-body">
               <NumberedList>
-                <NumberedItem num={`${chapterIndex}.2.1`}>
-                  <div className="text-[13px] md:text-[14px] font-semibold text-[--color-foreground] mb-1">
+                <NumberedItem num={`${fmt2(chapterIndex)}.${fmt2(2)}.${fmt2(1)}`}>
+                  <div className="font-semibold text-[--color-foreground] mb-1.5 subchapter-body">
                     {t('sections.solution.platform.title')}
                   </div>
                   {(() => {
                     const val = exec?.sections?.solution?.platform?.content ?? t('sections.solution.platform.content');
                     const bullets = normalizeBullets(val);
                     return bullets ? <BulletList items={bullets} /> : (
-                      <p className="text-[13px] md:text-[14px] leading-relaxed text-[--color-foreground] opacity-90">{val}</p>
+                      <p className="leading-relaxed text-[--color-foreground] opacity-90 subchapter-body">{val}</p>
                     );
                   })()}
                 </NumberedItem>
-                <NumberedItem num={`${chapterIndex}.2.2`}>
-                  <div className="text-[13px] md:text-[14px] font-semibold text-[--color-foreground] mb-1">
+                <NumberedItem num={`${fmt2(chapterIndex)}.${fmt2(2)}.${fmt2(2)}`}>
+                  <div className="font-semibold text-[--color-foreground] mb-1.5 subchapter-body">
                     {t('sections.solution.technology.title')}
                   </div>
                   {(() => {
                     const val = exec?.sections?.solution?.technology?.content ?? t('sections.solution.technology.content');
                     const bullets = normalizeBullets(val);
                     return bullets ? <BulletList items={bullets} /> : (
-                      <p className="text-[13px] md:text-[14px] leading-relaxed text-[--color-foreground] opacity-90">{val}</p>
+                      <p className="leading-relaxed text-[--color-foreground] opacity-90 subchapter-body">{val}</p>
                     );
                   })()}
                 </NumberedItem>
               </NumberedList>
-            </CardContent>
-          </Card>
-          <Card className="h-full bg-transparent shadow-none border-0">
-            <CardHeader className="p-3">
-              <CardTitle className="not-prose text-[13px] md:text-[15px] leading-tight font-semibold tracking-tight text-[--color-foreground]">{`${chapterIndex}.3 – ${t('sections.market.title')}`}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 pt-0 prose prose-sm md:prose-base max-w-none prose-p:leading-relaxed">
+            </div>
+          </div>
+          <div className="subchapter-block">
+            <div className="not-prose subchapter-title">{`${fmt2(chapterIndex)}.${fmt2(3)} – ${t('sections.market.title')}`}</div>
+            <div className="prose max-w-none prose-p:leading-relaxed pt-1 subchapter-body">
               {(() => {
                 const val = exec?.sections?.market?.content ?? t('sections.market.content');
                 const bullets = normalizeBullets(val);
                 return bullets ? <BulletList items={bullets} /> : <p>{val}</p>;
               })()}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
-        {/* Ausführliche Darstellung – konsolidiert: USPs und Business Model als Karten */}
-        <div className="not-prose mt-5 space-y-3">
+        {/* Ausführliche Darstellung – ohne Card-Wrapper: USPs und Business Model */}
+        <div className="not-prose mt-6 space-y-0">
           {/* USPs */}
           <span id="usps" className="sr-only" aria-hidden="true" />
-          <Card className="h-full bg-transparent shadow-none border-0">
-            <CardHeader className="border-b-0 p-3">
-              <CardTitle className="not-prose text-[13px] md:text-[15px] leading-tight font-semibold tracking-tight text-[--color-foreground]">
-                {`${chapterIndex}.4 – ${t('sections.usps.title')}`}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="md:grid md:grid-cols-2 md:gap-x-6 md:gap-y-1">
-                <NumberedList>
-                  {uspsItems.map((item: string, index: number) => (
-                    <NumberedItem key={index} num={`${chapterIndex}.4.${index + 1}`}>{item}</NumberedItem>
-                  ))}
-                </NumberedList>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="p-0 pt-0 subchapter-block">
+            <div className="not-prose subchapter-title">
+              {`${fmt2(chapterIndex)}.${fmt2(4)} – ${t('sections.usps.title')}`}
+            </div>
+            <div className="md:grid md:grid-cols-2 md:gap-x-6 md:gap-y-1">
+              <NumberedList>
+                {uspsItems.map((item: string, index: number) => (
+                  <NumberedItem key={index} num={`${fmt2(chapterIndex)}.${fmt2(4)}.${fmt2(index + 1)}`}>{item}</NumberedItem>
+                ))}
+              </NumberedList>
+            </div>
+          </div>
 
           {/* Business Model */}
           <span id="businessModel" className="sr-only" aria-hidden="true" />
-          <Card className="h-full bg-transparent shadow-none border-0">
-            <CardHeader className="border-b-0 p-3">
-              <CardTitle className="not-prose text-[13px] md:text-[15px] leading-tight font-semibold tracking-tight text-[--color-foreground]">
-                {`${chapterIndex}.5 – ${t('sections.businessModel.title')}`}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <p className="text-[13px] md:text-[14px] text-[--color-foreground] opacity-90 leading-relaxed">
+          <div className="pt-0 subchapter-block">
+            <div className="not-prose subchapter-title">
+              {`${fmt2(chapterIndex)}.${fmt2(5)} – ${t('sections.businessModel.title')}`}
+            </div>
+            <div className="pt-0">
+              <p className="text-[--color-foreground] opacity-90 leading-relaxed subchapter-body">
                 {exec?.sections?.businessModel?.content ?? t('sections.businessModel.content')}
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
         {/* Market wurde bereits oben zusammengefasst */}
       </div>

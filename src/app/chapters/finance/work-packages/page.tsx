@@ -7,7 +7,8 @@ import { GanttChart } from '@/components/finance/GanttChart';
 import { WorkPackageSummary } from '@/components/finance/WorkPackageSummary';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardTitle } from '@/components/ui/card';
+import ElegantCard from '@/components/ui/ElegantCard';
 
 export default function WorkPackagesPage() {
   const [workPackages] = useState<WorkPackage[]>(initialWorkPackages);
@@ -37,33 +38,33 @@ export default function WorkPackagesPage() {
       <WorkPackageSummary workPackages={workPackages} />
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
+        <ElegantCard innerClassName="rounded-[14px] bg-[--color-surface] p-4 md:p-5">
+          <div className="mb-2">
             <CardTitle>Arbeitspakete</CardTitle>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div>
             <WorkPackageTable 
               workPackages={workPackages} 
               onEdit={handleEdit} 
             />
-          </CardContent>
-        </Card>
+          </div>
+        </ElegantCard>
 
-        <Card>
-          <CardHeader>
+        <ElegantCard innerClassName="rounded-[14px] bg-[--color-surface] p-4 md:p-5">
+          <div className="mb-2">
             <CardTitle>Zeitplan (Gantt-Diagramm)</CardTitle>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div>
             <GanttChart workPackages={workPackages} />
-          </CardContent>
-        </Card>
+          </div>
+        </ElegantCard>
       </div>
 
-      <Card>
-        <CardHeader>
+      <ElegantCard innerClassName="rounded-[14px] bg-[--color-surface] p-4 md:p-5">
+        <div className="mb-2">
           <CardTitle>Budgetübersicht</CardTitle>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div>
           <div className="grid gap-4 md:grid-cols-4">
             <div className="rounded-lg border p-4">
               <div className="text-sm font-medium">Personalkosten</div>
@@ -101,8 +102,8 @@ export default function WorkPackagesPage() {
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </ElegantCard>
     </div>
   );
 }

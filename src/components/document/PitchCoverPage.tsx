@@ -3,7 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import { useTranslations, useFormatter } from "next-intl";
-import { Bot } from "lucide-react";
+import RobotIcon from "@/components/ui/RobotIcon";
 
 export default function PitchCoverPage() {
   const t = useTranslations("pitchCover");
@@ -26,7 +26,7 @@ export default function PitchCoverPage() {
     <div className="hidden print:block rounded-2xl ring-1 ring-[--color-border-subtle] bg-[--color-surface] shadow-sm p-8 md:p-10 max-w-[210mm] mx-auto">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-[--color-foreground]">
-          <Bot className="h-5 w-5" aria-hidden />
+          <RobotIcon size="sm" strokeWidth={2} stroke="currentColor" />
           <strong>SIGMACODE AI Robotics</strong>
         </div>
         <div className="text-sm text-[--color-foreground-muted]">

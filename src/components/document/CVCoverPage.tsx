@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import { useTranslations, useFormatter, useLocale } from "next-intl";
 import { MapPin } from "lucide-react";
+import RobotIcon from "@/components/ui/RobotIcon";
 
 export default function CVCoverPage() {
   const t = useTranslations("cv");
@@ -32,7 +33,10 @@ export default function CVCoverPage() {
         </div>
         <div>
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-[--color-foreground-strong]">
-            {t("pageTitle", { default: "Ismet Mesic" })}
+            <span className="inline-flex items-center gap-3 align-middle">
+              <RobotIcon size="lg" stroke="currentColor" strokeWidth={2} className="text-[--color-foreground] opacity-90" />
+              <span>{t("pageTitle", { default: "Ismet Mesic" })}</span>
+            </span>
           </h1>
           <p className="mt-1 text-base md:text-lg text-[--color-foreground-muted]">
             {t("pageSubtitle", { default: "Executive – Unternehmer, Innovator, Sanierer, Mentor & Forscher" })}

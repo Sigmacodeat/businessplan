@@ -1,8 +1,6 @@
 name: Vercel Deploy
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -15,84 +13,90 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      # Recommended: use NAME and TEAM SLUG; fall back to IDs if not provided
-      VERCEL_PROJECT_NAME: ${{ secrets.VERCEL_PROJECT_NAME }}
-      VERCEL_TEAM_SLUG: ${{ secrets.VERCEL_TEAM_SLUG }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Fail fast if Vercel secrets are missing
+        run: |
+          set -euo pipefail
+          missing=0
+          for v in VERCEL_TOKEN VERCEL_PROJECT_ID VERCEL_ORG_ID; do
+            if [ -z "${!v:-}" ]; then
+              echo "::error::Missing required secret: $v"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "One or more Vercel secrets are missing. Add them under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
+      - name: Enable Corepack (pnpm)
+        run: corepack enable
+
+      - name: Activate pnpm version
+        run: corepack prepare pnpm@9.12.3 --activate
+
+      - name: Verify pnpm
+        run: pnpm -v
+
+      - name: Mask Vercel IDs in logs
+        run: |
+          echo "::add-mask::${VERCEL_TOKEN}"
+          echo "::add-mask::${VERCEL_PROJECT_ID}"
+          echo "::add-mask::${VERCEL_ORG_ID}"
+          echo "Using Vercel IDs (masked)"
+
+      - name: Vercel whoami (auth check)
+        run: npx vercel whoami --token=$VERCEL_TOKEN
 
       - name: Verify Vercel CLI auth
-        run: |
-          npx vercel --version
-          # List teams and projects (no secrets printed)
-          npx vercel teams ls --token=$VERCEL_TOKEN || true
-          npx vercel projects ls --token=$VERCEL_TOKEN || true
-
-      - name: Resolve Vercel project/scope variables
-        id: resolve
-        shell: bash
-        run: |
-          set -e
-          # Prefer NAME/SLUG; fall back to IDs
-          PROJECT_REF="${VERCEL_PROJECT_NAME:-$VERCEL_PROJECT_ID}"
-          SCOPE_REF="${VERCEL_TEAM_SLUG:-$VERCEL_ORG_ID}"
-          echo "project_ref_masked=${#PROJECT_REF}" >> $GITHUB_OUTPUT
-          echo "scope_ref_masked=${#SCOPE_REF}" >> $GITHUB_OUTPUT
-          echo "PROJECT_REF=$PROJECT_REF" >> $GITHUB_ENV
-          echo "SCOPE_REF=$SCOPE_REF" >> $GITHUB_ENV
-          # Build optional flags; do not force if empty to allow default scope resolution
-          EXTRA_PROJECT=""
-          EXTRA_SCOPE=""
-          if [ -n "$PROJECT_REF" ]; then EXTRA_PROJECT="--project=\"$PROJECT_REF\""; fi
-          if [ -n "$SCOPE_REF" ]; then EXTRA_SCOPE="--scope=\"$SCOPE_REF\""; fi
-          echo "EXTRA_PROJECT=$EXTRA_PROJECT" >> $GITHUB_ENV
-          echo "EXTRA_SCOPE=$EXTRA_SCOPE" >> $GITHUB_ENV
+        run: npx vercel --version
 
       - name: Link project (no prompt)
         run: |
+          set -x
           npx vercel link --yes \
-            --cwd=robotics \
-            ${EXTRA_PROJECT} \
-            ${EXTRA_SCOPE} \
+            --cwd=. \
+            --project=$VERCEL_PROJECT_ID \
+            --scope=$VERCEL_ORG_ID \
             --token=$VERCEL_TOKEN
 
       - name: Pull Vercel Environment Information
         run: |
+          set -x
           npx vercel pull --yes \
             --environment=production \
-            --cwd=robotics \
-            --token=$VERCEL_TOKEN \
-            ${EXTRA_PROJECT} \
-            ${EXTRA_SCOPE}
+            --cwd=. \
+            --project=$VERCEL_PROJECT_ID \
+            --scope=$VERCEL_ORG_ID \
+            --token=$VERCEL_TOKEN
 
       - name: Install dependencies
-        working-directory: robotics
+        working-directory: .
         run: pnpm install --frozen-lockfile
 
       - name: Build
-        working-directory: robotics
+        working-directory: .
         run: pnpm build
 
       - name: Deploy to Vercel (prebuilt)
         run: |
+          set -x
           npx vercel deploy --prebuilt \
             --prod \
-            --cwd=robotics \
-            --token=$VERCEL_TOKEN \
-            ${EXTRA_PROJECT} \
-            ${EXTRA_SCOPE}
+            --cwd=. \
+            --project=$VERCEL_PROJECT_ID \
+            --scope=$VERCEL_ORG_ID \
+            --token=$VERCEL_TOKEN
+

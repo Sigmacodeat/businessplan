@@ -1,0 +1,23 @@
+# Node
+node_modules
+npm-debug.log
+pnpm-debug.log
+.next
+out
+
+# VCS
+.git
+.gitignore
+
+# Env
+.env
+.env.*
+.vercel
+
+# OS
+.DS_Store
+
+# Test artifacts
+coverage
+playwright-report
+.test-results

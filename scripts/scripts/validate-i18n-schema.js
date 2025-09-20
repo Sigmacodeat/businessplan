@@ -88,8 +88,10 @@ function applyFinanceCustomizations(schema) {
 }
 
 function main() {
+  // scripts/scripts/* -> project root is two levels up
   // Neue i18n-Struktur nutzt src/i18n/locales/{en,de}/bp.ts
-  const root = path.join(__dirname, '../src/i18n/locales');
+  const projectRoot = path.join(__dirname, '..', '..');
+  const root = path.join(projectRoot, 'src', 'i18n', 'locales');
   const enPath = path.join(root, 'en', 'bp.ts');
   const dePath = path.join(root, 'de', 'bp.ts');
 

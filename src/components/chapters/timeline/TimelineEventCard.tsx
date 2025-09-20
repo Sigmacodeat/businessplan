@@ -1,10 +1,10 @@
 "use client";
 import React from 'react';
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { CardTitle } from '@/components/ui/card';
 import type { TimelineCommonProps } from './types';
 import { Briefcase, GraduationCap } from 'lucide-react';
 import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
-import { variantsMap, defaultTransition, viewportLux } from './variants';
+import { variantsMap, defaultTransition, defaultViewport as viewportLux } from '@/components/animation/variants';
 
 export type TimelineEventCardProps = TimelineCommonProps & {
   title: string;
@@ -18,9 +18,11 @@ export type TimelineEventCardProps = TimelineCommonProps & {
   kind?: 'work' | 'education';
   /** Position der Statistik/Aside innerhalb der Card (lg+): links oder rechts */
   asidePosition?: 'left' | 'right';
+  /** Optional: Perioden-Badges rechts im Header inline anzeigen */
+  periodBadges?: React.ReactNode;
 };
 
-export default function TimelineEventCard({ title, subtitle, bullets, size = 'md', headerUnderline = 'blue', rightAside, bulletsId, kind, asidePosition = 'right' }: TimelineEventCardProps) {
+export default function TimelineEventCard({ title, subtitle, bullets, size = 'md', headerUnderline = 'blue', rightAside, bulletsId, kind, asidePosition = 'right', periodBadges }: TimelineEventCardProps) {
   const underlineClass = headerUnderline === 'none'
     ? ''
     : headerUnderline === 'blue'
@@ -29,7 +31,7 @@ export default function TimelineEventCard({ title, subtitle, bullets, size = 'md
         ? 'border-b border-amber-500/30 dark:border-amber-400/30'
         : 'border-b border-slate-300/30 dark:border-slate-600/30';
 
-  // Mobile-first, lesbarere Basisschriftgrößen; md/lg leicht angehoben
+  // Mobile-first, leicht kompaktere Basisschriftgrößen für den gesamten Block
   const titleSize = size === 'sm' ? 'text-[13.5px] md:text-[15px] lg:text-[17px]'
     : size === 'md' ? 'text-[14.5px] md:text-[16px] lg:text-[18px]'
     : 'text-[15px] md:text-[17px] lg:text-[19px]';
@@ -92,14 +94,21 @@ export default function TimelineEventCard({ title, subtitle, bullets, size = 'md
     setTilt({ rx: 0, ry: 0, glowX: 50, glowY: 50, moving: false });
   };
 
+  const fullWidthVisual = React.useMemo(() => {
+    return React.isValidElement(rightAside) && (rightAside.props as any)['data-fullwidth'] === true;
+  }, [rightAside]);
+
   const body = (
-    <Card elevated={false} className="relative ring-0 rounded-[11px] bg-[var(--color-surface)]/95 dark:bg-[var(--color-surface)]/70 supports-[backdrop-filter]:backdrop-blur-sm antialiased">
-      <CardContent className={`${size === 'sm' ? 'px-3 pt-2.5 pb-3' : size === 'md' ? 'px-3.5 pt-3 pb-3.5' : 'px-4 pt-3.5 md:pt-4 pb-4'}`}>
+    <div
+      className={`relative antialiased ${size === 'sm' ? 'px-3 pt-2 pb-2.5' : size === 'md' ? 'px-3 pt-2.5 pb-3' : 'px-3.5 pt-3 pb-3.5'}`}
+      role="group"
+      aria-label={`Timeline event: ${title}`}
+    >
         <div
           ref={cardRef}
           onMouseMove={onMouseMove}
           onMouseLeave={onMouseLeave}
-          className={`relative grid grid-cols-1 ${asidePosition === 'left' ? 'lg:[grid-template-columns:minmax(0,2fr)_minmax(0,3fr)]' : 'lg:[grid-template-columns:minmax(0,3fr)_minmax(0,2fr)]'} items-center lg:gap-x-10 min-w-0`}
+          className={`relative grid grid-cols-1 ${fullWidthVisual ? '' : 'lg:[grid-template-columns:minmax(0,1fr)_minmax(0,1fr)]'} items-center lg:gap-x-10 min-w-0`}
           style={isInteractive ? { perspective: '900px' } : undefined}
         >
           {/* Moving Glow */}
@@ -111,19 +120,30 @@ export default function TimelineEventCard({ title, subtitle, bullets, size = 'md
             whileInView="visible"
             viewport={viewportLux}
             transition={{ ...defaultTransition, delay: 0 + jitter * 0.5 }}
-            className={`${asidePosition === 'left' ? 'order-2 lg:order-2 lg:pl-5' : 'order-1 lg:pr-5'} min-w-0 flex flex-col justify-center w-full`}
+            className={`${fullWidthVisual
+              ? `${asidePosition === 'left' ? 'order-2 lg:order-2' : 'order-1'} lg:px-0`
+              : `${asidePosition === 'left' ? 'order-2 lg:order-2 lg:pl-5' : 'order-1 lg:pr-5'}`
+            } min-w-0 flex flex-col justify-center w-full`}
           >
-            {/* Titel + Untertitel gehören mit in die Textspalte */}
-            <div className={`${underlineClass} pb-2 md:pb-2.5`}>
-              <CardTitle className={`${titleSize} leading-[1.2] md:leading-[1.15] text-[--color-foreground] font-medium tracking-[-0.005em] md:tracking-[0.01em] [text-wrap:balance]`}>
-                <span className="inline-flex items-center gap-1">
-                  {kind === 'work' && <Briefcase aria-hidden className="h-[1em] w-[1em] opacity-85" />}
-                  {kind === 'education' && <GraduationCap aria-hidden className="h-[1em] w-[1em] opacity-85" />}
-                  <span className="[hyphens:auto]">{title}</span>
-                </span>
-              </CardTitle>
+            {/* Titel + Perioden-Badges inline, Untertitel darunter */}
+            <div className={`${underlineClass} pb-1.5 md:pb-2`}>
+              <div className={`flex items-center ${fullWidthVisual ? 'justify-start' : 'justify-between'} gap-2 min-w-0`}>
+                <CardTitle className={`${titleSize} leading-[1.12] md:leading-[1.08] text-[--color-foreground-strong] font-semibold tracking-[-0.015em] md:tracking-[-0.01em] [text-wrap:balance]`}
+                >
+                  <span className="inline-flex items-center gap-2.5">
+                    {kind === 'work' && <Briefcase aria-hidden className="shrink-0 h-[1.3em] w-[1.3em] opacity-95 align-middle" />}
+                    {kind === 'education' && <GraduationCap aria-hidden className="shrink-0 h-[1.3em] w-[1.3em] opacity-95 align-middle" />}
+                    <span className="[hyphens:auto]">{title}</span>
+                  </span>
+                </CardTitle>
+                {periodBadges ? (
+                  <div className={`shrink-0 ${fullWidthVisual ? 'hidden' : 'flex'}`}>
+                    {periodBadges}
+                  </div>
+                ) : null}
+              </div>
               {subtitle ? (
-                <p className={`${size === 'sm' ? 'text-[12px] md:text-[12.5px]' : size === 'md' ? 'text-[12.5px] md:text-[13px]' : 'text-[13px] md:text-[13.5px]'} text-[--color-foreground]/75 mt-1 md:mt-0.5 font-normal leading-[1.5] [hyphens:auto]`}>{subtitle}</p>
+                <p className={`${size === 'sm' ? 'text-[12px] md:text:[12.5px]' : size === 'md' ? 'text-[12.5px] md:text-[13px]' : 'text-[13px] md:text-[13.5px]'} text-[--color-foreground]/90 mt-0.5 font-medium leading-[1.45] [hyphens:auto] ${fullWidthVisual ? 'text-center' : ''}`}>{subtitle}</p>
               ) : null}
             </div>
             {Array.isArray(bullets) && bullets.length > 0 ? (
@@ -132,7 +152,7 @@ export default function TimelineEventCard({ title, subtitle, bullets, size = 'md
                 variants={variantsMap.containerStagger}
                 initial="hidden"
                 animate="visible"
-                className={`${size === 'sm' ? 'space-y-1.25 md:space-y-1.5' : size === 'md' ? 'space-y-1.25 md:space-y-1.5' : 'space-y-1.5'} list-disc pl-4 marker:text-[--color-foreground]/25 max-w-[62ch]`}
+                className={`${size === 'sm' ? 'space-y-1.25 md:space-y-1.5' : size === 'md' ? 'space-y-1.25 md:space-y-1.5' : 'space-y-1.5'} list-disc list-outside pl-4 marker:text-[--color-foreground]/60 max-w-[62ch]`}
               >
                 {bullets.map((b, i) => {
                   const lines = splitLines(b);
@@ -143,7 +163,7 @@ export default function TimelineEventCard({ title, subtitle, bullets, size = 'md
                     <motion.li
                       key={i}
                       variants={variantsMap.bulletEnter}
-                      className={`${size === 'sm' ? 'text-[12px] md:text-[12.5px]' : size === 'md' ? 'text-[12.5px] md:text-[13px]' : 'text-[13px] md:text-[13.5px]'} leading-[1.5] text-[--color-foreground]/80 [text-wrap:pretty] tracking-[-0.006em]`}
+                      className={`${size === 'sm' ? 'text-[12px] md:text-[12.5px]' : size === 'md' ? 'text-[12.5px] md:text-[13px]' : 'text-[13px] md:text-[13.5px]'} leading-[1.4] text-[--color-foreground]/92 [text-wrap:pretty] tracking-[-0.006em]`}
                     >
                       <span className="[hyphens:auto] tracking-[-0.005em]">{head}</span>
                       {hasSubs && (
@@ -151,10 +171,16 @@ export default function TimelineEventCard({ title, subtitle, bullets, size = 'md
                           variants={variantsMap.containerStagger}
                           initial="hidden"
                           animate="visible"
-                          className={`mt-0.5 ${size === 'sm' ? 'space-y-0.5' : 'space-y-0.5'} list-[square] pl-4 marker:text-[--color-foreground]/20`}
+                          className={`mt-1 ${size === 'sm' ? 'space-y-0.5' : 'space-y-0.5'} list-disc list-outside pl-4 marker:text-[--color-foreground]/50`}
                         >
                           {subs.map((s, j) => (
-                            <motion.li key={j} variants={variantsMap.bulletEnter} className={`${size === 'sm' ? 'text-[11px] md:text-[11.5px]' : size === 'md' ? 'text-[11.5px] md:text-[12px]' : 'text-[12px] md:text-[12.5px]'} leading-[1.45] text-[--color-foreground]/75 [hyphens:auto] tracking-[-0.006em]`}>{s}</motion.li>
+                            <motion.li
+                              key={j}
+                              variants={variantsMap.bulletEnter}
+                              className={`${size === 'sm' ? 'text-[10.5px] md:text-[11px]' : size === 'md' ? 'text-[11px] md:text-[11.5px]' : 'text-[11.5px] md:text-[12px]'} leading-[1.4] text-[--color-foreground]/85 [hyphens:auto] tracking-[-0.006em]`}
+                            >
+                              {s}
+                            </motion.li>
                           ))}
                         </motion.ul>
                       )}
@@ -165,6 +191,7 @@ export default function TimelineEventCard({ title, subtitle, bullets, size = 'md
             ) : null}
           </motion.div>
           {/* Aside: Statistik/Visuals zentriert, Position abhängig */}
+          {!fullWidthVisual && (
           <motion.div
             variants={variantsMap.asidePop}
             initial="hidden"
@@ -181,7 +208,7 @@ export default function TimelineEventCard({ title, subtitle, bullets, size = 'md
             style={prefersReducedMotion ? undefined : ({ y: asideY } as any)}
           >
             <div
-              className="w-full max-w-[420px] px-2 min-w-0"
+              className="w-full max-w-[720px] lg:max-w-[760px] px-0 md:px-1 min-w-0"
               style={isInteractive ? {
                 transform: `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)`,
                 transformStyle: 'preserve-3d',
@@ -192,13 +219,13 @@ export default function TimelineEventCard({ title, subtitle, bullets, size = 'md
               {rightAside}
             </div>
           </motion.div>
+          )}
           {/* Mobile: Aside immer UNTER dem Text anzeigen */}
-          <div className={`order-2 lg:hidden flex items-center justify-center w-full mt-3`}>
+          <div className={`order-2 ${fullWidthVisual ? 'flex' : 'lg:hidden'} flex items-center justify-center w-full mt-3`}>
             {rightAside}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
   );
 
   return body;

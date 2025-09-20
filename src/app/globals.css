@@ -233,6 +233,8 @@
   --underline-neutral-end: #b6bcc2;   /* slate-400-ish */
   /* Cover title gradient (light) reused across pages */
   --cover-gradient: linear-gradient(90deg, rgba(5,150,105,0.65), rgba(8,145,178,0.65), rgba(2,132,199,0.65));
+  /* Kapitel-Heading-Farbe (Light): hohe Lesbarkeit auf hellen Flächen */
+  --chapter-heading: var(--foreground-strong);
 }
 
 /* Hint the UA about supported color schemes for better form controls, etc. */
@@ -292,6 +294,8 @@
   --underline-neutral-end: #9ca3af;   /* slate-400 */
   /* Cover title gradient (dark) */
   --cover-gradient: linear-gradient(90deg, rgba(52,211,153,0.87), rgba(34,211,238,0.87), rgba(14,165,233,0.87));
+  /* Kapitel-Heading-Farbe (Dark): Weiß für maximalen Kontrast */
+  --chapter-heading: #ffffff;
 }
 
 body {
@@ -341,6 +345,108 @@ h2[id], h3[id], h4[id], .prose h2[id], .prose h3[id], .prose h4[id] {
 
 /* KPI card spacing utilities (consistent paddings and centering) */
 @layer utilities {
+  /* Kapitelweite Typografie – auf alle 11 Kapitel anwenden (Scope: .chapters-root) */
+  .chapters-root .section-title {
+    /* exakt wie Kapitel 8 */
+    color: var(--chapter-heading) !important;
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.64px !important;
+    line-height: 32px !important;
+    font-size: 25.6px !important;
+    margin: 0 0 6px 0 !important; /* leichte Luft darunter */
+  }
+
+  /* Einheitlich weiße Abschnittsüberschriften (H2/H3) – auch wenn Komponenten Utility-Klassen setzen */
+  .chapters-root h2,
+  .chapters-root .prose h2,
+  .chapters-root .not-prose h2 {
+    /* exakt wie Kapitel 8 */
+    color: var(--chapter-heading) !important;
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui !important;
+    font-weight: 700 !important;
+    letter-spacing: 0 !important;
+    line-height: 35px !important;
+    font-size: 28px !important;
+    margin: 12px 0 6px 0 !important; /* konsistent vor/nach H2 */
+  }
+
+  .chapters-root h3,
+  .chapters-root .prose h3,
+  .chapters-root .not-prose h3 {
+    color: var(--chapter-heading) !important;
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.005em !important;
+    line-height: 1.25 !important;
+    font-size: 13px !important;
+  }
+  @media (min-width: 768px) {
+    .chapters-root h3,
+    .chapters-root .prose h3,
+    .chapters-root .not-prose h3 {
+      font-size: 14px !important;
+    }
+  }
+
+  /* Feine Luft unter Subchapter-Titeln (greift bei SectionCard title-Prop und bei h3:first-child) */
+  .chapters-root .subchapter-title { margin-bottom: 4px !important; }
+  .chapters-root .subchapter-block h3:first-child { margin-bottom: 4px !important; }
+
+  /* Kapitel-Nummern (z. B. 8.1.2) über die neue Klasse aus NumberedList */
+  .chapters-root .chapter-num {
+    color: var(--chapter-heading) !important;
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui !important;
+    font-weight: 600 !important;
+    letter-spacing: 0 !important;
+  }
+
+  /* Einheitliche Unterkapitel-Titel (kapitelweite Konsistenz) */
+  .subchapter-title {
+    /* Typografie */
+    font-weight: 600;
+    letter-spacing: -0.005em; /* leicht kompakter für bessere Lesbarkeit */
+    line-height: 1.25; /* snug */
+    color: var(--color-foreground);
+    font-size: 17px;
+  }
+  @media (min-width: 768px) {
+    .subchapter-title {
+      font-size: 19px;
+    }
+  }
+  /* Einheitlicher vertikaler Abstand zwischen Unterkapiteln */
+  .subchapter-block {
+    margin-top: 1.5rem; /* ~24px */
+  }
+  @media (min-width: 768px) {
+    .subchapter-block {
+      margin-top: 1.75rem; /* ~28px */
+    }
+  }
+  /* Auto-Übernahme: h3 innerhalb eines Unterkapitel-Blocks erhält dieselbe Titeltypografie */
+  .subchapter-block h3:first-child {
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    line-height: 1.25;
+    color: var(--color-foreground);
+    font-size: 17px;
+    margin-bottom: 0.25rem; /* leichte Luft unter dem Titel */
+  }
+  @media (min-width: 768px) {
+    .subchapter-block h3:first-child {
+      font-size: 19px;
+    }
+  }
+  /* Einheitliche Body-Textgröße innerhalb von Unterkapiteln */
+  .subchapter-body {
+    font-size: 14.5px;
+  }
+  @media (min-width: 768px) {
+    .subchapter-body {
+      font-size: 16px;
+    }
+  }
   /* Reusable body text size used across chapters (13px → md:14px) */
   .text-body-sm {
     font-size: 13px;
@@ -1423,16 +1529,16 @@ ul, ol { padding-left: 1.25rem; }
 
 /* Subtler list marker coloring for better harmony */
 .reading-max ul li::marker {
-  color: color-mix(in oklab, var(--color-foreground-muted) 85%, var(--color-accent-3) 15%);
+  color: var(--color-foreground-muted);
 }
 .reading-max ol li::marker {
-  color: color-mix(in oklab, var(--color-foreground-muted) 88%, var(--color-accent-3) 12%);
+  color: var(--color-foreground-muted);
 }
 .dark .reading-max ul li::marker {
-  color: color-mix(in oklab, var(--color-foreground-muted) 90%, var(--color-accent-3) 10%);
+  color: var(--color-foreground-muted);
 }
 .dark .reading-max ol li::marker {
-  color: color-mix(in oklab, var(--color-foreground-muted) 92%, var(--color-accent-3) 8%);
+  color: var(--color-foreground-muted);
 }
 
 @media print {

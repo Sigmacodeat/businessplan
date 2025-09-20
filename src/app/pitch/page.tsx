@@ -3,209 +3,68 @@
 import { motion, AnimatePresence, useInView, useMotionValue, useSpring, useTransform, useReducedMotion, useScroll } from "framer-motion";
 import { useEffect, useMemo, useRef, useState, useId, type ElementType } from "react";
 import { chapters } from "@/chapters/chapters.config";
+import RobotIcon from "@/components/ui/RobotIcon";
 import Reveal from "@/components/animation/Reveal";
 import { defaultTransition, defaultViewport } from "@/components/animation/variants";
 import { getMessages } from "@/i18n/messages";
 import { buildLocalePath } from "@/i18n/path";
 import Link from "next/link";
-import { Card } from "@/components/ui/card";
+import ElegantCard from "@/components/ui/ElegantCard";
 import { useLocale, useTranslations } from "next-intl";
-import { Bot, CheckCircle2, Sparkles, LineChart, Rocket, Cpu, Users, AlertTriangle, Target, Banknote, Leaf, Flag, Briefcase, Mail, Printer, ChevronsDown, Mouse } from "lucide-react";
+import { CheckCircle2, Sparkles, LineChart, Rocket, Cpu, Users, AlertTriangle, Target, Banknote, Leaf, Flag, Briefcase, Mail, Printer, ChevronsDown, Mouse } from "lucide-react";
 import PitchCoverPage from "@/components/document/PitchCoverPage";
 import ClosingPage from "@/components/document/ClosingPage";
 import PrintTOC from "@/components/document/PrintTOC";
+// KPI / Charts
+import MiniBarChart from "@/components/chapters/timeline/MiniBarChart";
+import LineChartAnimated from "@/components/charts/LineChartAnimated";
+import MiniDonut from "@/components/charts/MiniDonut";
+import { KPI_ANIM_DURATION, KPI_DONUT_CLASS, getKpiDelay } from "@/components/charts/kpiAnimation";
+import { getChapterTheme } from "@/app/chapters/chapterTheme";
+
+// Orchestrierte, links->rechts Stagger-Animation für KPI-Grids
+const kpiContainerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      when: "beforeChildren",
+      staggerChildren: 0.08,
+    },
+  },
+};
+
+const kpiItemVariants = {
+  hidden: { opacity: 0, x: -16, y: 6 },
+  show: { opacity: 1, x: 0, y: 0, transition: { duration: 0.42 } },
+};
+
+// Gleiches Prinzip für die Bullet-Listen in allen Kapitel-Sections
+const bulletContainerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      when: "beforeChildren",
+      staggerChildren: 0.06,
+      delayChildren: 0.04,
+    },
+  },
+};
+
+const bulletItemVariants = {
+  hidden: { opacity: 0, x: -14 },
+  show: { opacity: 1, x: 0, transition: { duration: 0.38 } },
+};
+
+// Früheres Scroll-Laden: spezielles Viewport-Setup nur für die Pitch-Seite
+// amount 0.02 (~2% Sichtbarkeit) mit moderateren Margins, damit Trigger verlässlicher feuern
+const PITCH_VIEWPORT = { once: true, amount: 0.02, margin: "-20% 0px -20% 0px" } as const;
 
 type SimpleKpi = { label: string; value: string | number; sub?: string };
 
-// Vollflächiges Intro-Overlay: Seite dunkel, nur das Icon sichtbar, danach Fade-Out
-function IntroOverlay({ onDone }: { onDone?: () => void }) {
-  // Fixed-Fly-To-Target: Bot fliegt von Mitte zum Header-Anker (#pitch-bot-anchor)
-  const [haloOn, setHaloOn] = useState(false);
-  const [target, setTarget] = useState<{ x: number; y: number; scale: number } | null>(null);
-  const [colorOn, setColorOn] = useState(false);
-  const [ripple, setRipple] = useState(false);
-  const [canSkip, setCanSkip] = useState(false);
-  const prefersReduced = useReducedMotion();
-  const introGradId = useId();
-
-  useEffect(() => {
-    if (prefersReduced) {
-      onDone?.();
-      return;
-    }
-    // Ziel messen (robust mit rAF + Resize)
-    const measure = () => {
-      const anchor = document.getElementById('pitch-bot-anchor');
-      if (!anchor) return false;
-      const r = anchor.getBoundingClientRect();
-      const cx = r.left + r.width / 2;
-      const cy = r.top + r.height / 2;
-      // Zielgröße ~ 1.15em
-      const cs = window.getComputedStyle(anchor);
-      const fontSize = parseFloat(cs.fontSize || '16');
-      const desired = 1.15 * fontSize; // px
-      const base = 140; // Bot-Basisgröße px
-      const scale = Math.max(0.2, Math.min(1.0, desired / base));
-      setTarget({ x: cx - window.innerWidth / 2, y: cy - window.innerHeight / 2, scale });
-      return true;
-    };
-    let raf = 0; let attempts = 0;
-    const tick = () => {
-      attempts++;
-      const ok = measure();
-      if (!ok && attempts < 60) raf = requestAnimationFrame(tick);
-    };
-    tick();
-    const onResize = () => measure();
-    window.addEventListener('resize', onResize);
-    // Farbe und Halo leicht verzögert aktivieren
-    const tColor = setTimeout(() => setColorOn(true), 900);
-    const tHalo = setTimeout(() => setHaloOn(true), 1200);
-    // skip erst nach kurzer Mindestdauer erlauben (verhindert versehentliches Abbrechen)
-    const tSkip = setTimeout(() => setCanSkip(true), 300);
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', onResize); clearTimeout(tColor); clearTimeout(tHalo); clearTimeout(tSkip); };
-  }, [prefersReduced, onDone]);
-
-  // Tastatur: Esc/Enter/Space zum Überspringen
-  useEffect(() => {
-    if (prefersReduced) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (!canSkip) return;
-      if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        onDone?.();
-      }
-    };
-    window.addEventListener('keydown', onKey, { passive: false } as any);
-    return () => window.removeEventListener('keydown', onKey as any);
-  }, [canSkip, prefersReduced, onDone]);
-
-  const handleSkipClick = () => {
-    if (!canSkip) return;
-    onDone?.();
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-[100]"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Intro"
-      onClick={handleSkipClick}
-    >
-      {/* Hintergrund layer – fadet aus */}
-      <motion.div
-        className="absolute inset-0"
-        initial={{ opacity: 1 }}
-        animate={{ opacity: 0 }}
-        transition={{ duration: 1.8, ease: 'easeInOut', delay: 0.2 }}
-        style={{
-          willChange: 'opacity',
-          background:
-            'radial-gradient(110% 110% at 50% 40%, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.95) 40%, rgba(0,0,0,0.98) 70%, rgba(0,0,0,1) 100%)',
-        }}
-      />
-      {/* Halo – dezent skaliert & parallax */}
-      <motion.div
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-        style={{ willChange: 'transform, opacity', width: 320, height: 320, borderRadius: 9999, filter: 'blur(14px)', background: 'radial-gradient(50% 50% at 50% 50%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.08) 38%, rgba(255,255,255,0.0) 70%)' }}
-        initial={{ opacity: 0, x: 0, y: 0, scale: 0.96 }}
-        animate={haloOn ? (target ? { opacity: 0.22, x: target.x * 0.80, y: target.y * 0.80, scale: 1.04 } : { opacity: 0.22, scale: 1.04 }) : { opacity: 0 }}
-        transition={{ duration: 2.0, ease: 'easeInOut' }}
-      />
-      {/* Bot – Bogenbahn + Ghost-Trail */}
-      <motion.div
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-        style={{ willChange: 'transform' }}
-        initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
-        animate={target ? {
-          x: [0, target.x * 0.55, target.x],
-          y: [0, -28, target.y],
-          scale: [1, 1.02, target.scale],
-        } : {}}
-        transition={{ duration: 3.2, delay: 0.6, ease: 'easeInOut', times: [0, 0.55, 1] }}
-        onAnimationComplete={() => {
-          if (prefersReduced) { onDone?.(); return; }
-          setRipple(true);
-          setTimeout(() => onDone?.(), 900);
-        }}
-      >
-        <motion.i
-          className="flex items-center justify-center"
-          style={{ color: colorOn ? 'var(--color-accent)' : 'var(--color-foreground-muted)', filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.25))' }}
-          animate={colorOn ? { scale: [1, 1.045, 1], rotate: [0, -2.5, 0] } : {}}
-          transition={{ duration: 1.0, ease: 'easeInOut' }}
-        >
-          <Bot width={140} height={140} stroke={`url(#${introGradId})`} fill="none" strokeWidth={2}>
-            <defs>
-              <linearGradient id={introGradId as any} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="var(--color-accent)" />
-                <stop offset="100%" stopColor="var(--color-accent-3)" />
-              </linearGradient>
-            </defs>
-          </Bot>
-        </motion.i>
-        {/* Ghost-Trail – dezente Spur hinter dem Bot */}
-        {target ? (
-          <motion.i
-            className="flex items-center justify-center absolute inset-0"
-            style={{ color: 'var(--color-accent)', opacity: 0.10, filter: 'blur(0.2px)' }}
-            initial={{ scale: 1, x: 0, y: 0 }}
-            animate={{ scale: 1.01, x: target.x * 0.92, y: target.y * 0.92 }}
-            transition={{ duration: 3.0, delay: 0.6, ease: 'easeInOut' }}
-            aria-hidden
-          >
-            <Bot width={140} height={140} stroke="currentColor" fill="none" strokeWidth={2} />
-          </motion.i>
-        ) : null}
-      </motion.div>
-
-      {/* Ripple + Partikel-Effekt beim Eintreffen */}
-      {!prefersReduced && ripple && target ? (
-        <div
-          className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-          style={{ transform: `translate(calc(-50% + ${target.x}px), calc(-50% + ${target.y}px))` }}
-          aria-hidden
-        >
-          {/* Ripple-Ringe */}
-          {[0, 1, 2].map((i) => (
-            <motion.span
-              key={`r-${i}`}
-              className="absolute block rounded-full"
-              style={{
-                width: 8,
-                height: 8,
-                border: '1.5px solid currentColor',
-                color: 'var(--color-accent)'
-              }}
-              initial={{ opacity: 0.22, scale: 0.6 }}
-              animate={{ opacity: 0, scale: 2.5 }}
-              transition={{ duration: 0.6 + i * 0.08, ease: 'easeOut', delay: 0.03 * i }}
-            />
-          ))}
-          {/* Partikel entfernt */}
-        </div>
-      ) : null}
-
-      {/* Skip Control */}
-      <motion.button
-        type="button"
-        onClick={handleSkipClick}
-        className="absolute top-4 right-4 md:top-5 md:right-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] ring-1 ring-[--color-border-subtle] bg-[color-mix(in_oklab,var(--color-surface)_72%,transparent)] text-[--color-foreground] backdrop-blur-[2px] hover:bg-[color-mix(in_oklab,var(--color-surface)_82%,transparent)] focus:outline-none focus:ring-2 focus:ring-[--color-accent]"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: canSkip ? 1 : 0 }}
-        transition={{ duration: 0.25 }}
-        aria-label="Intro überspringen"
-      >
-        Überspringen
-      </motion.button>
-    </div>
-  );
-}
-
-// 5s Intro Splash Overlay (full screen)
-// IntroSplash entfernt (nicht genutzt)
-
+// 5s Intro Splash Overlay (entfernt)
+//
 function extractFinanceKpis(messages: Messages | null): SimpleKpi[] {
   if (!messages) return [];
   const m: any = messages;
@@ -304,6 +163,24 @@ function extractBulletsForChapter(slug: string, messages: Messages | null): stri
         .filter(Boolean)
         .join(" • ");
       if (marketLine) exec.push(marketLine);
+
+      // Fallbacks, falls oben nichts verfügbar ist
+      if (exec.length === 0) {
+        // 1) content.executive.bullets
+        const execBullets = (content.executive && Array.isArray((content as any).executive.bullets)) ? (content as any).executive.bullets as string[] : [];
+        if (execBullets.length > 0) return execBullets.slice(0, 8);
+        // 2) bp.executive.bullets
+        const bex = (m.bp?.executive ?? {}) as any;
+        if (Array.isArray(bex.bullets) && bex.bullets.length > 0) return (bex.bullets as string[]).slice(0, 8);
+        // 3) bp.execFacts oder execFacts im Root
+        const facts = (m.bp?.execFacts ?? m.execFacts ?? {}) as Record<string, unknown>;
+        const preferredKeys = ['tagline', 'summary', 'vision', 'mission', 'valueProp', 'positioning'];
+        const factLines = preferredKeys
+          .map(k => facts[k])
+          .filter(v => typeof v === 'string' && (v as string).trim().length > 0) as string[];
+        if (factLines.length > 0) return factLines.slice(0, 8);
+      }
+
       return exec.slice(0, 8);
     }
     case "business-model": {
@@ -448,18 +325,23 @@ function extractBulletsForChapter(slug: string, messages: Messages | null): stri
   }
 }
 
+// (Fallback-Bullets entfernt: Investorenvorlage soll nur echte Inhalte zeigen)
+
 export default function PitchPage() {
   const { messages, locale } = usePitchMessages();
-  const [showIntro, setShowIntro] = useState(true);
   const t = useTranslations("pitchCover");
-  // Startsignal für Header-Sequenz, nachdem der Bot im Header angekommen ist
+  // Startsignal für Header-Sequenz: direkt nach kleinem Delay
   const [headerReady, setHeaderReady] = useState(false);
-  // Orchestrierung: 'intro' -> 'title' -> 'badge' -> 'meta'
-  const [stage, setStage] = useState<'intro' | 'title' | 'badge' | 'meta'>('intro');
+  // Orchestrierung: 'title' -> 'badge' -> 'meta'
+  const [stage, setStage] = useState<'title' | 'badge' | 'meta'>('title');
   const prefersReducedPage = useReducedMotion();
   const [isCoarse, setIsCoarse] = useState(false);
   // Gradient-IDs dynamisch, um Kollisionen zu vermeiden
   const badgeGradId = useId();
+  // Untere Sektion erst nach expliziter Interaktion laden
+  const [hasInteracted, setHasInteracted] = useState(true);
+  // Trigger: Text-Kick nach Icon-Wobble
+  const [kick, setKick] = useState(false);
 
   // Scroll-Fortschritt (Top-Bar)
   const { scrollYProgress } = useScroll();
@@ -488,51 +370,38 @@ export default function PitchPage() {
     };
   }, []);
 
-  // Während des Intros Scrollen verhindern
+  // Erste Nutzer-Interaktion erkennen (Scroll/Touch/Key), danach Inhalte laden
   useEffect(() => {
-    if (!showIntro) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
+    if (hasInteracted) return;
+    const markInteracted = () => setHasInteracted(true);
+    const onKey = (e: KeyboardEvent) => {
+      const keys = [" ", "Spacebar", "ArrowDown", "PageDown", "Enter"]; // Enter für Stickiness
+      if (keys.includes(e.key)) markInteracted();
     };
-  }, [showIntro]);
+    window.addEventListener('wheel', markInteracted, { passive: true });
+    window.addEventListener('touchstart', markInteracted, { passive: true });
+    window.addEventListener('scroll', markInteracted, { passive: true });
+    window.addEventListener('keydown', onKey as any, { passive: true } as any);
+    return () => {
+      window.removeEventListener('wheel', markInteracted as any);
+      window.removeEventListener('touchstart', markInteracted as any);
+      window.removeEventListener('scroll', markInteracted as any);
+      window.removeEventListener('keydown', onKey as any);
+    };
+  }, [hasInteracted]);
 
-  // Intro nur einmal pro Session anzeigen; via ?intro=1 erzwingen
+  // Header-Sequenz kurz nach Mount starten; bei Reduced Motion direkt alles zeigen
   useEffect(() => {
-    try {
-      if (typeof window === 'undefined') return;
-      const url = new URL(window.location.href);
-      const force = url.searchParams.get('intro') === '1';
-      const seen = sessionStorage.getItem('pitchIntroSeen') === '1';
-      if (force) {
-        sessionStorage.removeItem('pitchIntroSeen');
-        setShowIntro(true);
-      } else if (seen) {
-        setShowIntro(false);
-      }
-    } catch {}
-  }, []);
-
-  // 0.5s nachdem das Intro weg ist, Text einfahren und Bot leicht nach links schieben
-  useEffect(() => {
-    if (showIntro) return;
-    const timer = setTimeout(() => setHeaderReady(true), 500);
-    return () => clearTimeout(timer);
-  }, [showIntro]);
-
-  // Stage auf 'title' setzen sobald Intro vorbei ist
-  useEffect(() => {
-    if (!showIntro) setStage('title');
-  }, [showIntro]);
-
-  // Reduced Motion: sofort alles zeigen
-  useEffect(() => {
-    if (!showIntro && prefersReducedPage) {
+    if (prefersReducedPage) {
       setHeaderReady(true);
       setStage('meta');
+      // Barrierefrei: bei Reduced Motion sofort Inhalt zeigen
+      setHasInteracted(true);
+      return;
     }
-  }, [showIntro, prefersReducedPage]);
+    const timer = setTimeout(() => setHeaderReady(true), 300);
+    return () => clearTimeout(timer);
+  }, [prefersReducedPage]);
 
   // Detect coarse pointer (Touch) to switch hint between Swipe (mobile) and Scroll (desktop)
   useEffect(() => {
@@ -607,6 +476,40 @@ export default function PitchPage() {
     chapters.filter((c) => !/arbeitspaket/i.test(c.title) && !/arbeitspaket/i.test(String(c.slug)))
   ), []);
 
+  // Precompute sections for Investment Case
+  const investmentSections = useMemo(() => {
+    const m: any = messages ?? {};
+    const moats: string[] = Array.isArray(m.marketCompetitive?.moat)
+      ? m.marketCompetitive.moat
+      : (Array.isArray(m.content?.marketCompetitive?.moat)
+          ? m.content.marketCompetitive.moat
+          : overrides.investmentCase.moat);
+    const traction: string[] = Array.isArray((m.bp as any)?.tractionKpis?.highlights)
+      ? (m.bp as any).tractionKpis.highlights
+      : overrides.investmentCase.traction;
+    const unit: string[] = Array.isArray(m.businessModel?.unitEconomics)
+      ? m.businessModel.unitEconomics
+      : (Array.isArray(m.content?.businessModel?.unitEconomics)
+          ? m.content.businessModel.unitEconomics
+          : overrides.investmentCase.unitEconomics);
+    const gtm: string[] = Array.isArray(m.gtm?.phase1)
+      ? m.gtm.phase1
+      : (Array.isArray(m.content?.gtm?.phase1)
+          ? m.content.gtm.phase1
+          : overrides.investmentCase.gtm);
+    type Sec = { title: string; items: string[] };
+    const sections: Sec[] = [
+      { title: 'Moat', items: moats.slice(0, 3) },
+      { title: 'Traction', items: traction.slice(0, 3) },
+      { title: 'Unit Economics', items: unit.slice(0, 3) },
+      { title: 'GTM', items: gtm.slice(0, 3) },
+    ];
+    return sections;
+  }, [messages, overrides]);
+
+  // Precompute risks bullets
+  const risksBullets = useMemo(() => extractBulletsForChapter('risks', messages), [messages]);
+
   // Presenter-Mode: einfache Tastaturnavigation zwischen Kapiteln
   useEffect(() => {
     function getSections(): HTMLElement[] {
@@ -639,8 +542,10 @@ export default function PitchPage() {
         scrollToIndex(getCurrentIndex() - 1);
       }
     };
-    window.addEventListener('keydown', onKey, { passive: false } as any);
-    return () => window.removeEventListener('keydown', onKey as any);
+    window.addEventListener('keydown', onKey as any, { passive: false } as any);
+    return () => {
+      window.removeEventListener('keydown', onKey as any);
+    };
   }, []);
 
   return (
@@ -653,17 +558,7 @@ export default function PitchPage() {
           aria-hidden
         />
       )}
-      {/* Vollflächiges Intro-Overlay – deterministische Fly-to-Target Animation */}
-      <AnimatePresence>
-        {showIntro && (
-          <IntroOverlay
-            onDone={() => {
-              try { sessionStorage.setItem('pitchIntroSeen', '1'); } catch {}
-              setShowIntro(false);
-            }}
-          />
-        )}
-      </AnimatePresence>
+      {/* Intro-Overlay entfernt: Einstieg erfolgt direkt mit Header */}
       {/* Print-only cover page for Pitch */}
       <div className="hidden print:block">
         <PitchCoverPage />
@@ -678,11 +573,12 @@ export default function PitchPage() {
       <div className="py-8">
         {/* Hero Header – eleganter Titel mit Badge & i18n Subtitel */}
         <div className="mb-12 md:mb-16">
-          <div className="mx-auto max-w-3xl text-center">
-            {/* Badge (bleibt sichtbar ab 'badge' und in 'meta') */}
-            <AnimatePresence>
-              {(stage === 'badge' || stage === 'meta') && (
-                <motion.div
+          <div className="mx-auto max-w-3xl text-center flex flex-col items-center justify-center">
+            {/* Badge (bleibt sichtbar ab 'badge' und in 'meta') – reservierter Platz, um Layout-Shift zu vermeiden */}
+            <div className="min-h-[36px] md:min-h-[42px] mb-5">
+              <AnimatePresence>
+                {(stage === 'badge' || stage === 'meta') && (
+                  <motion.div
                   className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium tracking-wide
                              ring-1 [--g1:var(--color-accent)] [--g2:var(--color-accent-3)]
                              ring-[color-mix(in_oklab,color-mix(in_oklab,var(--g1)_50%,var(--g2)_50%)_45%,transparent)]
@@ -690,8 +586,8 @@ export default function PitchPage() {
                              backdrop-blur-[0.5px]
                              shadow-[inset_0_0_0_1px_color-mix(in_oklab,color-mix(in_oklab,var(--g1)_50%,var(--g2)_50%)_22%,transparent)]"
                   initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: [-2, 1, 0] }}
-                  transition={{ duration: 0.35, ease: 'easeOut' }}
+                  animate={{ opacity: 1, y: [-3, 1.5, 0] }}
+                  transition={{ duration: 1.2, ease: [0.2, 0.85, 0.2, 1] }}
                   onAnimationComplete={() => {
                     if (stage === 'badge') setStage('meta');
                   }}
@@ -709,49 +605,81 @@ export default function PitchPage() {
                   </span>
                 </motion.div>
               )}
-            </AnimatePresence>
+              </AnimatePresence>
+            </div>
 
-            {/* Brand Lockup */}
-            <h1 className="mt-1.5 text-[clamp(3.0rem,10.5vw,3.6rem)] md:text-5xl font-extrabold tracking-tight md:tracking-tighter leading-[1.06] md:leading-tight">
-              <Link
-                href={buildLocalePath('/', locale)}
-                className="no-underline hover:no-underline focus:no-underline decoration-transparent"
-              >
-                <span className="flex flex-col items-center gap-1 sm:flex-row sm:gap-2 [--g1:var(--color-accent)] [--g2:var(--color-accent-3)]">
+            {/* Brand Lockup (kein Link, zentriert, ohne Unterstreichung) */}
+            <h1 className="mt-1.5 text-[clamp(3.0rem,10.5vw,3.6rem)] md:text-5xl font-extrabold tracking-tight md:tracking-tighter leading-[1.06] md:leading-tight w-full">
+              <span className="flex flex-col items-center justify-center gap-1 sm:flex-row sm:items-center sm:justify-center sm:gap-2 [--g1:var(--color-accent)] [--g2:var(--color-accent-3)] pointer-events-none select-none w-full">
                   {/* Header-Anchor für die Zielmessung */}
-                  <span id="pitch-bot-anchor" className="inline-flex items-center justify-center w-[1.5em] h-[1.5em] sm:w-[1.15em] sm:h-[1.15em]">
+                  <span id="pitch-bot-anchor" className="inline-flex items-center justify-center w-[1.2em] h-[1.2em] sm:w-[1.08em] sm:h-[1.08em] translate-y-[1px]">
                     <motion.i
                       aria-hidden
-                      className={`inline-flex items-center justify-center text-[--color-accent] w-[1.5em] h-[1.5em] sm:w-[1.15em] sm:h-[1.15em] ${showIntro ? 'invisible' : 'visible'}`}
-                      style={{ width: '1.15em', height: '1.15em' }}
-                      animate={{ x: headerReady ? -10 : 0 }}
-                      transition={{ type: 'spring', stiffness: 240, damping: 22 }}
+                      className={`inline-flex items-center justify-center w-full h-full visible`}
+                      initial={{ scale: 0.82, opacity: 0 }}
+                      animate={headerReady
+                        ? (stage === 'badge' || stage === 'meta'
+                          ? { scale: 1, opacity: 1, rotate: [0, -5, 2.5, -0.8, 0], x: [0, -5, 1.6, -0.4, 0] }
+                          : { scale: 1, opacity: 1 })
+                        : {}
+                      }
+                      transition={{
+                        type: 'spring', stiffness: 180, damping: 30, mass: 0.95, bounce: 0.18, delay: 0.04,
+                        rotate: { type: 'tween', duration: 0.45, ease: [0.22, 0.8, 0.22, 1], delay: 0.06 },
+                        x: { type: 'tween', duration: 0.45, ease: [0.22, 0.8, 0.22, 1], delay: 0.06 },
+                      }}
+                      onAnimationComplete={() => setKick(true)}
+                      style={{ transformOrigin: '55% 45%' }}
                     >
-                      <Bot className="w-full h-full" stroke="currentColor" fill="none" strokeWidth={2} />
+                      <RobotIcon
+                        size="100%"
+                        strokeWidth={2.4}
+                        gradient
+                        g1="var(--g1)"
+                        g2="var(--g2)"
+                        title="Robot"
+                      />
                     </motion.i>
                   </span>
-                  {/* Titel-Textsegmente */}
-                  <motion.span
-                    className="text-transparent bg-clip-text bg-[linear-gradient(90deg,var(--g1),var(--g2))] text-center [text-wrap:balance] decoration-transparent"
-                    initial={{ opacity: 0, x: 60 }}
-                    animate={headerReady && !showIntro ? { opacity: 1, x: 0 } : { opacity: 0, x: 60 }}
-                    transition={{ type: 'spring', stiffness: 520, damping: 22, mass: 0.7 }}
-                    onAnimationComplete={() => {
-                      if (stage === 'title') setStage('badge');
-                    }}
-                  >
-                    SIGMACODE AI
-                  </motion.span>
-                  <motion.span
-                    className="ai-gradient-subtle text-center [text-wrap:balance] decoration-transparent"
-                    initial={{ opacity: 0, x: 12 }}
-                    animate={headerReady && !showIntro ? { opacity: 1, x: 0 } : { opacity: 0, x: 12 }}
-                    transition={{ duration: 0.35, ease: 'easeOut', delay: 0.15 }}
-                  >
-                    Robotics
-                  </motion.span>
-                </span>
-              </Link>
+                  {/* Titel-Textsegmente – frische, positionsstabile Shine-Reveal-Animation ohne Pixelbewegung */}
+                  <span className="relative inline-flex items-center justify-center gap-2">
+                    {/* SIGMACODE AI – Shine von links nach rechts, danach stabil */}
+                    <motion.span
+                      className="text-transparent bg-clip-text bg-[linear-gradient(90deg,var(--g1),var(--g2))] text-center [text-wrap:balance] decoration-transparent inline-block"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: headerReady && kick ? 1 : 0 }}
+                      transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
+                      style={{ backgroundSize: '200% 100%', backgroundPosition: '0% 50%' }}
+                      onAnimationComplete={() => { if (stage === 'title') setStage('badge'); }}
+                    >
+                      <motion.span
+                        aria-hidden
+                        style={{ display: 'inline-block', backgroundSize: '200% 100%' }}
+                        animate={{ backgroundPosition: (headerReady && kick) ? ['0% 50%', '100% 50%'] : '0% 50%' }}
+                        transition={{ duration: 0.9, ease: [0.22, 0.8, 0.22, 1] }}
+                      >
+                        SIGMACODE AI
+                      </motion.span>
+                    </motion.span>
+                    {/* Robotics – leicht versetzt, gleicher Shine */}
+                    <motion.span
+                      className="ai-gradient-subtle text-center [text-wrap:balance] decoration-transparent inline-block"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: headerReady && kick ? 1 : 0 }}
+                      transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
+                      style={{ backgroundSize: '200% 100%', backgroundPosition: '0% 50%' }}
+                    >
+                      <motion.span
+                        aria-hidden
+                        style={{ display: 'inline-block', backgroundSize: '200% 100%' }}
+                        animate={{ backgroundPosition: (headerReady && kick) ? ['0% 50%', '100% 50%'] : '0% 50%' }}
+                        transition={{ duration: 0.9, ease: [0.22, 0.8, 0.22, 1] }}
+                      >
+                        Robotics
+                      </motion.span>
+                    </motion.span>
+                  </span>
+              </span>
             </h1>
 
             {/* Subtitel + Divider erscheinen erst nach Badge */}
@@ -760,26 +688,29 @@ export default function PitchPage() {
                 <>
                   <motion.p
                     className="mt-2 text-[16px] md:text-lg text-[--color-foreground-muted] max-w-[68ch] mx-auto"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1], delay: 0.12 }}
+                    initial={{ opacity: 0, y: 6, scaleY: 0.96, clipPath: 'inset(0 0 100% 0)' }}
+                    animate={{ opacity: 1, y: 0, scaleY: 1, clipPath: 'inset(0 0 0% 0)' }}
+                    transition={{ duration: 0.55, ease: [0.22, 0.8, 0.24, 1], delay: 0.16 }}
+                    style={{ transformOrigin: 'top center' }}
                   >
                     {t("subtitle", { default: "Humanoid Robotics · App‑Store · KI‑Assistenz · Skalierbares RaaS" })}
                   </motion.p>
-                  <motion.div
-                    className="mt-3 h-[2px] w-32 md:w-36 mx-auto rounded-full [--g1:var(--color-accent)] [--g2:var(--color-accent-3)] bg-[linear-gradient(90deg,var(--g1),var(--g2))] opacity-90"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35, ease: 'easeOut', delay: 0.24 }}
-                  />
+                  {/* Unterstreichung/Divider im Logo-Hero entfernt */}
                   {!prefersReducedPage && (
                     <motion.div
                       className="mt-3 flex items-center justify-center"
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, ease: 'easeOut', delay: 0.36 }}
-                      role="status"
+                      role="button"
                       aria-live="polite"
+                      aria-label={isCoarse ? 'Nach unten wischen' : 'Nach unten scrollen'}
+                      onClick={() => {
+                        setHasInteracted(true);
+                        const first = document.querySelector('[id^="pitch-"]') as HTMLElement | null;
+                        first?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      tabIndex={0}
                     >
                       <motion.span
                         className="inline-flex items-center justify-center p-2.5 md:p-3 rounded-full ring-1 ring-[--color-border-subtle] bg-[--color-surface]/60 backdrop-blur-[1px] text-[--color-accent]"
@@ -796,25 +727,7 @@ export default function PitchPage() {
                       <span className="sr-only">{isCoarse ? 'Nach unten wischen' : 'Nach unten scrollen'}</span>
                     </motion.div>
                   )}
-                  {/* Intro-Replay */}
-                  <motion.div
-                    className="mt-2 flex items-center justify-center"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35, ease: 'easeOut', delay: 0.48 }}
-                  >
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-[12px] ring-1 ring-[--color-border-subtle] bg-[color-mix(in_oklab,var(--color-surface)_70%,transparent)] text-[--color-foreground] hover:bg-[color-mix(in_oklab,var(--color-surface)_82%,transparent)] focus:outline-none focus:ring-2 focus:ring-[--color-accent]"
-                      onClick={() => {
-                        try { sessionStorage.removeItem('pitchIntroSeen'); } catch {}
-                        window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
-                        setShowIntro(true);
-                      }}
-                    >
-                      Intro wiedergeben
-                    </button>
-                  </motion.div>
+                  {/* Replay-Button entfernt */}
                 </>
               )}
             </AnimatePresence>
@@ -828,10 +741,8 @@ export default function PitchPage() {
               className="chapter-section"
               data-chapter-index={index}
               id={`pitch-${chapter.slug}`}
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 1, y: 0 }}
               transition={{ ...defaultTransition, delay: index * 0.08 }}
-              viewport={{ ...defaultViewport, margin: "-30% 0px -55% 0px" }}
             >
               <ChapterSection
                 chapter={chapter}
@@ -879,32 +790,19 @@ export default function PitchPage() {
         </nav>
 
         {/* Investment Case – Moat, Traction, Unit Economics, GTM */}
-        <Reveal className="rounded-2xl card-outline-gradient shadow-sm p-8 mt-14 print:shadow-none print:ring-0 print:bg-transparent">
-          <div className="mb-4">
-            <h2 className="text-xl font-extrabold tracking-tight">Investment Case</h2>
-          </div>
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-            {useMemo(() => {
-              const m: any = messages ?? {};
-              const moats: string[] = Array.isArray(m.marketCompetitive?.moat) ? m.marketCompetitive.moat : (Array.isArray(m.content?.marketCompetitive?.moat) ? m.content.marketCompetitive.moat : overrides.investmentCase.moat);
-              const traction: string[] = Array.isArray((m.bp as any)?.tractionKpis?.highlights) ? (m.bp as any).tractionKpis.highlights : overrides.investmentCase.traction;
-              const unit: string[] = Array.isArray(m.businessModel?.unitEconomics) ? m.businessModel.unitEconomics : (Array.isArray(m.content?.businessModel?.unitEconomics) ? m.content.businessModel.unitEconomics : overrides.investmentCase.unitEconomics);
-              const gtm: string[] = Array.isArray(m.gtm?.phase1) ? m.gtm.phase1 : (Array.isArray(m.content?.gtm?.phase1) ? m.content.gtm.phase1 : overrides.investmentCase.gtm);
-              type Sec = { title: string; items: string[] };
-              const sections: Sec[] = [
-                { title: 'Moat', items: moats.slice(0, 3) },
-                { title: 'Traction', items: traction.slice(0, 3) },
-                { title: 'Unit Economics', items: unit.slice(0, 3) },
-                { title: 'GTM', items: gtm.slice(0, 3) },
-              ];
-              return sections;
-            }, [messages, overrides]).map((sec, idx) => (
+        <Reveal>
+          <ElegantCard className="mt-14" innerClassName="p-8 print:shadow-none print:ring-0 print:bg-transparent">
+            <div className="mb-4">
+              <h2 className="text-xl font-extrabold tracking-tight">Investment Case</h2>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            {investmentSections.map((sec, idx) => (
               <motion.div
                 key={idx}
                 className="rounded-2xl bg-[--color-surface]/70 ring-1 ring-[--color-border-subtle] p-5"
                 initial={{ opacity: 0, y: 8 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-30% 0px -55% 0px" }}
+                viewport={PITCH_VIEWPORT}
                 transition={{ duration: 0.35, ease: 'easeOut', delay: Math.min(idx * 0.05, 0.25) }}
               >
                 <div className="flex items-center gap-2.5 mb-3">
@@ -920,28 +818,17 @@ export default function PitchPage() {
                 </ul>
               </motion.div>
             ))}
-          </div>
+            </div>
+          </ElegantCard>
         </Reveal>
 
         {/* Use of Funds – Ticket, Allocation, Nächste Meilensteine */}
-        <Reveal className="rounded-2xl card-outline-gradient shadow-sm p-8 mt-12 print:shadow-none print:ring-0 print:bg-transparent">
-          <div className="mb-4">
-            <h2 className="text-xl font-extrabold tracking-tight">Use of Funds</h2>
-          </div>
-          
-          {useMemo(() => {
-            const m: any = messages ?? {};
-            const fin = (m.content?.finance ?? m.finance ?? {}) as any;
-            const ticket = fin.fundingStrategy?.ticket ?? fin.fundingRound?.ticket ?? overrides.useOfFunds.ticket;
-            const allocation = Array.isArray(fin.fundingStrategy?.allocation)
-              ? fin.fundingStrategy.allocation as Array<{area: string; percent?: number | string}>
-              : (Array.isArray(fin.fundingStrategyAllocation)
-                ? fin.fundingStrategyAllocation as Array<{area: string; percent?: number | string}>
-                : overrides.useOfFunds.allocation);
-            const msRows: any[] = Array.isArray(m.milestones?.rows) ? m.milestones.rows : (Array.isArray(m.content?.milestones?.rows) ? m.content.milestones.rows : overrides.useOfFunds.milestones);
-            const milestones = (msRows || []).slice(0, 3).map((r: any[]) => ({ year: r?.[0], quarter: r?.[1], title: r?.[2] }));
-            return { ticket, allocation, milestones };
-          }, [messages, overrides]) as any /* narrow scope */ && (
+        <Reveal>
+          <ElegantCard className="mt-12" innerClassName="p-8 print:shadow-none print:ring-0 print:bg-transparent">
+            <div className="mb-4">
+              <h2 className="text-xl font-extrabold tracking-tight">Use of Funds</h2>
+            </div>
+            
             <div className="grid gap-6 md:grid-cols-3">
               {/* Ticketgröße */}
               <div className="rounded-2xl bg-[--color-surface]/70 ring-1 ring-[--color-border-subtle] p-5 print:shadow-none print:ring-0 print:bg-transparent">
@@ -1039,17 +926,18 @@ export default function PitchPage() {
                   })()}
                 </ul>
               </div>
-            </div>
-          )}
+              </div>
+          </ElegantCard>
         </Reveal>
 
         {/* Ask & Terms – Runde, Rahmenbedingungen, Runway */}
-        <Reveal className="rounded-2xl card-outline-gradient shadow-sm p-8 mt-12 print:shadow-none print:ring-0 print:bg-transparent">
-          <div className="mb-4">
-            <h2 className="text-xl font-extrabold tracking-tight">Ask & Terms</h2>
-          </div>
-          
-          <div className="grid gap-6 md:grid-cols-3">
+        <Reveal>
+          <ElegantCard className="mt-12" innerClassName="p-8 print:shadow-none print:ring-0 print:bg-transparent">
+            <div className="mb-4">
+              <h2 className="text-xl font-extrabold tracking-tight">Ask & Terms</h2>
+            </div>
+            
+            <div className="grid gap-6 md:grid-cols-3">
             {/* Runde & Zweck */}
             <div>
               <div className="text-sm font-semibold tracking-wide uppercase mb-2">Runde & Zweck</div>
@@ -1110,31 +998,35 @@ export default function PitchPage() {
               </ul>
             </div>
           </div>
+          </ElegantCard>
         </Reveal>
 
         {/* Compact Risks & Mitigation */}
-        <Reveal className="rounded-2xl card-outline-gradient shadow-sm p-8 mt-12 print:shadow-none print:ring-0 print:bg-transparent">
-          <div className="mb-2">
-            <h2 className="text-lg font-semibold tracking-tight">Risiken & Mitigation (Auszug)</h2>
-          </div>
-          <ul className="grid gap-2.5 md:gap-3 md:grid-cols-2 text-[13px] md:text-[14px] list-none p-0 m-0">
-            {useMemo(() => extractBulletsForChapter('risks', messages), [messages]).filter((r) => !shouldHideBullet(r)).slice(0,6).map((r, i) => (
+        <Reveal>
+          <ElegantCard className="mt-12" innerClassName="p-8 print:shadow-none print:ring-0 print:bg-transparent">
+            <div className="mb-2">
+              <h2 className="text-lg font-semibold tracking-tight">Risiken & Mitigation (Auszug)</h2>
+            </div>
+            <ul className="grid gap-2.5 md:gap-3 md:grid-cols-2 text-[13px] md:text-[14px] list-none p-0 m-0">
+            {risksBullets.filter((r) => !shouldHideBullet(r)).slice(0,6).map((r, i) => (
               <li key={i} className="flex items-start gap-2">
                 <span className="mt-1 h-1 w-1 rounded-full bg-white/80" aria-hidden />
                 <span>{r}</span>
               </li>
             ))}
-          </ul>
+            </ul>
+          </ElegantCard>
         </Reveal>
 
         {/* Call to Action */}
-        <Reveal className="rounded-2xl shadow-sm p-8 mt-16 bg-[--color-surface]/70 print:shadow-none print:ring-0 print:bg-transparent">
-          <motion.div
+        <Reveal>
+          <ElegantCard className="mt-16" innerClassName="p-8 print:shadow-none print:ring-0 print:bg-transparent">
+            <motion.div
             className="text-center space-y-6"
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ ...defaultTransition, delay: 0.2 }}
-            viewport={{ ...defaultViewport }}
+            viewport={PITCH_VIEWPORT}
           >
             <h2>
               Nächster Schritt: Investment-Dialog
@@ -1163,7 +1055,8 @@ export default function PitchPage() {
                 PDF exportieren
               </motion.button>
             </div>
-          </motion.div>
+            </motion.div>
+          </ElegantCard>
         </Reveal>
       </div>
       {/* Print-only closing/contact page */}
@@ -1206,7 +1099,7 @@ function AnimatedCounter({ value, delay = 0 }: { value: number; delay?: number }
       style={{}}
       initial={{ opacity: 0.85 }}
       whileInView={{ opacity: 1 }}
-      viewport={{ once: true, margin: "-30% 0px -55% 0px" }}
+      viewport={PITCH_VIEWPORT}
       transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
     >
       {display}
@@ -1224,6 +1117,7 @@ function ChapterSection({ chapter, index, total, messages, locale }: {
   const bullets = useMemo(() => extractBulletsForChapter(chapter.slug, messages), [chapter.slug, messages]);
   const financeKpis = useMemo(() => chapter.slug === 'finance' ? extractFinanceKpis(messages) : [], [chapter.slug, messages]);
   const tractionKpis = useMemo(() => chapter.slug === 'traction-kpis' ? extractTractionKpis(messages) : [], [chapter.slug, messages]);
+  const theme = useMemo(() => getChapterTheme(chapter.slug as any), [chapter.slug]);
 
   // Kapitel-Icon je Abschnitt (nur für Bullets unten)
   const Icon = useMemo<ElementType>(() => {
@@ -1242,6 +1136,77 @@ function ChapterSection({ chapter, index, total, messages, locale }: {
       default: return CheckCircle2;
     }
   }, [chapter.slug]);
+
+  // Kapitel-spezifische KPI-Karten (State of the Art) – kompaktes Grid über den Bullets
+  const kpiCards = useMemo(() => {
+    if (!messages) return [] as Array<any>;
+    const m: any = messages;
+    const de = (locale || 'de').startsWith('de');
+
+    switch (chapter.slug) {
+      case 'business-model': { // ARPU, CAC, LTV, Gross Margin
+        const bm = (m.bp?.content?.businessModel ?? m.bp?.businessModel ?? m.content?.businessModel ?? {}) as any;
+        const items: any[] = [];
+        if (bm?.kpi?.arpu) items.push({ key: 'arpu', label: 'ARPU', value: bm.kpi.arpu, chart: 'spark' });
+        if (bm?.kpi?.cac) items.push({ key: 'cac', label: 'CAC', value: bm.kpi.cac, chart: 'bar' });
+        if (bm?.kpi?.ltv) items.push({ key: 'ltv', label: 'LTV', value: bm.kpi.ltv, chart: 'spark' });
+        if (bm?.kpi?.grossMargin) items.push({ key: 'gm', label: de ? 'Bruttomarge' : 'Gross Margin', value: bm.kpi.grossMargin, chart: 'donut' });
+        return items;
+      }
+      case 'market': { // Service market, CAGR Service, Humanoids market, EU share
+        const vol = (m.bp?.market?.volume ?? {}) as any;
+        const items: any[] = [];
+        if (typeof vol?.service?.global === 'string') items.push({ key: 'svc', label: de ? 'Service‑Markt (global)' : 'Service market (global)', value: vol.service.global, chart: 'spark' });
+        if (typeof vol?.service?.cagr === 'string') items.push({ key: 'cagr', label: 'CAGR (Service)', value: vol.service.cagr, chart: 'bar' });
+        if (typeof vol?.humanoid?.global === 'string') items.push({ key: 'hum', label: de ? 'Humanoiden‑Markt (global)' : 'Humanoids market (global)', value: vol.humanoid.global, chart: 'spark' });
+        if (typeof vol?.eu === 'string') items.push({ key: 'eu', label: de ? 'EU‑Anteil' : 'EU share', value: vol.eu, chart: 'donut' });
+        return items;
+      }
+      case 'finance': { // Market 2030, Break-even, CAGR, Revenue 2030 – Werte aus bp/finance & bp/market
+        const t = (m.bp ?? {}) as any;
+        const items: any[] = [];
+        if (typeof t?.market?.volume?.service?.global === 'string') items.push({ key: 'market2030', label: de ? 'Markt 2030' : 'Market 2030', value: t.market.volume.service.global, chart: 'spark' });
+        if (typeof t?.finance?.breakEven === 'string') items.push({ key: 'breakEven', label: de ? 'Break‑even' : 'Break‑even', value: t.finance.breakEven, chart: 'bar' });
+        if (typeof t?.market?.volume?.service?.cagr === 'string') items.push({ key: 'cagr', label: 'CAGR', value: t.market.volume.service.cagr, chart: 'bar' });
+        if (typeof t?.execFacts?.revenue2030 === 'string') items.push({ key: 'revenue2030', label: de ? 'Umsatz 2030' : 'Revenue 2030', value: t.execFacts.revenue2030, chart: 'spark' });
+        return items;
+      }
+      case 'technology': { // Uptime, Latency, Build time, TRL
+        const tk = (m.bp?.technology?.kpi ?? {}) as any;
+        const items: any[] = [];
+        if (tk?.uptime) items.push({ key: 'uptime', label: 'Uptime', value: tk.uptime, chart: 'donut' });
+        if (tk?.latencyP95) items.push({ key: 'latency', label: de ? 'Latenz p95' : 'Latency p95', value: tk.latencyP95, chart: 'bar' });
+        if (tk?.buildTime) items.push({ key: 'build', label: de ? 'Build‑Zeit' : 'Build time', value: tk.buildTime, chart: 'spark' });
+        if (tk?.trl) items.push({ key: 'trl', label: 'TRL', value: tk.trl, chart: 'donut' });
+        return items;
+      }
+      case 'risks': { // Top risks, Mitigation coverage, Regulatory readiness, Runway target
+        const rk = (m.bp?.risks?.kpi ?? {}) as any;
+        const items: any[] = [];
+        if (rk?.topRisks) items.push({ key: 'top', label: de ? 'Top‑Risiken' : 'Top risks', value: rk.topRisks, chart: 'donut' });
+        if (rk?.mitigationCoverage) items.push({ key: 'mitigation', label: de ? 'Mitigation' : 'Mitigation', value: rk.mitigationCoverage, chart: 'donut' });
+        if (rk?.regulatoryReadiness) items.push({ key: 'reg', label: de ? 'Regulatorik' : 'Regulatory', value: rk.regulatoryReadiness, chart: 'spark' });
+        if (rk?.runway) items.push({ key: 'runway', label: de ? 'Runway Ziel' : 'Runway target', value: rk.runway, chart: 'bar' });
+        return items;
+      }
+      case 'traction-kpis': { // Live metrics kompakt (ohne harte Abhängigkeit vom metrics Modul)
+        const td = (m.bp?.tractionKpis ?? {}) as any;
+        const highlights = Array.isArray(td?.highlights) ? td.highlights : [];
+        if (highlights.length === 0) return [] as any[];
+        return highlights.slice(0, 4).map((h: string, i: number) => ({ key: `t${i}`, label: de ? 'Highlight' : 'Highlight', value: h, chart: i % 3 === 0 ? 'spark' : i % 3 === 1 ? 'bar' : 'donut' }));
+      }
+      case 'exit-strategy': { // Kompakte A/B/C Optik
+        const ex = (m.bp?.exit ?? {}) as any;
+        const items: any[] = [];
+        if (ex?.options?.a?.title) items.push({ key: 'growth', label: 'Growth', value: ex.options.a.title, chart: 'bar' });
+        if (ex?.options?.b?.title) items.push({ key: 'forecast', label: 'Forecast', value: ex.options.b.title, chart: 'spark' });
+        if (ex?.options?.c?.title) items.push({ key: 'share', label: de ? 'Marktanteil' : 'Market share', value: ex.options.c.title, chart: 'donut' });
+        return items;
+      }
+      default:
+        return [] as any[];
+    }
+  }, [messages, chapter.slug, locale]);
 
   // Einheitliche Icon-Größe; für 'risks' etwas dünnerer Stroke, damit das Ausrufezeichen klar bleibt
   const bulletIconSize = useMemo(() => 20, []);
@@ -1278,14 +1243,16 @@ function ChapterSection({ chapter, index, total, messages, locale }: {
   }, [chapter.slug]);
 
   return (
-    <Reveal className="rounded-2xl card-outline-gradient shadow-sm p-8 print:shadow-none print:ring-0 print:bg-transparent">
-      <div className="flex items-center justify-between mb-6">
+    <Reveal>
+      <ElegantCard innerClassName="p-8 print:shadow-none print:ring-0 print:bg-transparent">
+        <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3 sm:gap-4">
           <motion.span
-            className="shine-text text-3xl sm:text-4xl font-extrabold"
+            className="shine-text ai-blue text-3xl sm:text-4xl font-extrabold"
             initial={{ opacity: 0.85, y: 4 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
+            viewport={PITCH_VIEWPORT}
           >
             <AnimatedCounter value={index + 1} delay={index * 0.05} />
           </motion.span>
@@ -1302,112 +1269,195 @@ function ChapterSection({ chapter, index, total, messages, locale }: {
         </div>
       </div>
 
+      {/* KPI/API Cards – oberhalb der Bullets, falls für das Kapitel verfügbar */}
+      {kpiCards.length > 0 && (
+        <motion.ul
+          className="not-prose mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 items-stretch"
+          variants={kpiContainerVariants}
+          initial="hidden"
+          whileInView="show"
+          viewport={PITCH_VIEWPORT}
+        >
+          {kpiCards.map((s: any, idx: number) => (
+            <motion.li
+              key={`${String(s.label)}-${idx}`}
+              variants={kpiItemVariants}
+              whileHover={{ y: -2, scale: 1.01 }}
+              whileTap={{ scale: 0.995 }}
+            >
+              <ElegantCard className="h-full" innerClassName="relative h-full rounded-[12px] bg-[--color-surface] p-4 md:p-5 lg:p-6" ariaLabel={`${s.label} KPI Card`} role="group">
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 text-[10px] md:text-[11px] tracking-wide uppercase mb-2 text-[--color-foreground-muted]">
+                    <span>{s.label}</span>
+                  </div>
+                  <div className="mb-3 kpi-visual">
+                    {s.chart === 'bar' ? (
+                      <MiniBarChart
+                        series={[24, 36, 42, 51, 58]}
+                        height={110}
+                        color={theme.warning}
+                        ariaLabel={`${s.label} Trend`}
+                        yTicksCount={3}
+                        showGrid
+                        xLabels={['M-4','M-3','M-2','M-1','Now']}
+                        valueFormatter={(v) => `${v}`}
+                      />
+                    ) : s.chart === 'spark' ? (
+                      <LineChartAnimated
+                        data={[
+                          { label: 'M-4', value: 40 },
+                          { label: 'M-3', value: 46 },
+                          { label: 'M-2', value: 49 },
+                          { label: 'M-1', value: 51 },
+                          { label: 'Now', value: 55 },
+                        ]}
+                        width={520}
+                        height={120}
+                        ariaLabel={`${s.label} Verlauf`}
+                        showArea={false}
+                        showPoints
+                        yTicksCount={3}
+                        gradientArea={false}
+                        padding={{ top: 8, right: 8, bottom: 18, left: 30 }}
+                        tooltipFormatter={(label, value) => `${label} • ${value}`}
+                        responsive
+                      />
+                    ) : (
+                      <MiniDonut
+                        value={0.7}
+                        gradient
+                        colorStart={theme.success}
+                        colorEnd={theme.accent1}
+                        bg={theme.success ? `${theme.success}18` : 'rgba(16,185,129,0.15)'}
+                        delay={getKpiDelay(idx) + 0.05}
+                        duration={KPI_ANIM_DURATION}
+                        className={KPI_DONUT_CLASS}
+                      />
+                    )}
+                  </div>
+                  <div className="font-semibold text-[--color-foreground-strong] [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums] text-[15px] md:text-[16px] leading-snug">
+                    <span className="whitespace-normal break-words" title={String(s.value)}>{String(s.value)}</span>
+                  </div>
+                </div>
+              </ElegantCard>
+            </motion.li>
+          ))}
+        </motion.ul>
+      )}
+
       {/* Kompakte Inhaltsstichpunkte aus Businessplan/i18n mit Kapitel-Icons */}
       <div className="prose max-w-none">
-        {bullets.length > 0 && (
-          <ul className="grid gap-2.5 md:gap-3 sm:grid-cols-2 list-none p-0 m-0">
-            {bullets.filter((b) => !shouldHideBullet(b)).map((b, i) => (
-              <motion.li
-                key={i}
-                className="flex items-start gap-2.5 text-[13px] md:text-[14px] text-[--color-foreground]"
-                initial={{ opacity: 0, y: 6 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, ease: 'easeOut', delay: Math.min(i * 0.03, 0.18) }}
-                viewport={{ once: true, margin: "-30% 0px -55% 0px" }}
-              >
-                {(() => {
-                  const I = Icon;
-                  const gradId = `pitch-icon-grad-${chapter.slug}-${i}`;
-                  return (
-                    <motion.i
-                      aria-hidden
-                      className="inline-flex items-center justify-center shrink-0 leading-none"
-                      initial={false}
-                      whileInView={bulletIconKeyframes.animate}
-                      transition={bulletIconKeyframes.transition}
-                      viewport={{ once: true, margin: "-30% 0px -55% 0px" }}
-                      style={{ width: bulletIconSize, height: bulletIconSize }}
-                    >
-                      {chapter.slug === 'risks' ? (
-                        <svg
-                          width={bulletIconSize as any}
-                          height={bulletIconSize as any}
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="none"
-                        >
-                          <defs>
-                            <linearGradient id={gradId} x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                              <stop offset="0%" stopColor={'var(--color-accent-2)'} />
-                              <stop offset="100%" stopColor={'var(--color-accent-3)'} />
-                            </linearGradient>
-                          </defs>
-                          <path
-                            d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+        {(() => {
+          const visibleBullets = bullets.filter((b) => !shouldHideBullet(b));
+          if (visibleBullets.length === 0) return null;
+          return (
+            <motion.ul
+              className="grid gap-2.5 md:gap-3 sm:grid-cols-2 list-none p-0 m-0"
+              variants={bulletContainerVariants}
+              initial="hidden"
+              whileInView="show"
+              viewport={PITCH_VIEWPORT}
+            >
+              {visibleBullets.map((b, i) => (
+                <motion.li
+                  key={i}
+                  className="flex items-start gap-2.5 text-[13px] md:text-[14px] text-[--color-foreground]"
+                  variants={bulletItemVariants}
+                  style={{ transformOrigin: 'top left' }}
+                >
+                  {(() => {
+                    const I = Icon;
+                    const gradId = `pitch-icon-grad-${chapter.slug}-${i}`;
+                    return (
+                      <motion.i
+                        aria-hidden
+                        className="inline-flex items-center justify-center shrink-0 leading-none"
+                        initial={false}
+                        whileInView={bulletIconKeyframes.animate}
+                        transition={bulletIconKeyframes.transition}
+                        viewport={PITCH_VIEWPORT}
+                        style={{ width: bulletIconSize, height: bulletIconSize }}
+                      >
+                        {chapter.slug === 'risks' ? (
+                          <svg
+                            width={bulletIconSize as any}
+                            height={bulletIconSize as any}
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="none"
+                          >
+                            <defs>
+                              <linearGradient id={gradId} x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stopColor={'var(--color-accent-2)'} />
+                                <stop offset="100%" stopColor={'var(--color-accent-3)'} />
+                              </linearGradient>
+                            </defs>
+                            <path
+                              d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                              stroke={`url(#${gradId})`}
+                              strokeWidth={bulletIconStroke as any}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <rect x="10.9" y="8.2" width="2.2" height="6.0" rx="1.1" fill={`url(#${gradId})`} shapeRendering="geometricPrecision" />
+                            <circle cx="12" cy="16" r="1.5" fill={`url(#${gradId})`} />
+                          </svg>
+                        ) : (
+                          <I
+                            className="block w-full h-full"
+                            width={bulletIconSize as any}
+                            height={bulletIconSize as any}
                             stroke={`url(#${gradId})`}
+                            fill="none"
                             strokeWidth={bulletIconStroke as any}
+                            vectorEffect="non-scaling-stroke"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                          />
-                          <rect x="10.9" y="8.2" width="2.2" height="6.0" rx="1.1" fill={`url(#${gradId})`} shapeRendering="geometricPrecision" />
-                          <circle cx="12" cy="16" r="1.5" fill={`url(#${gradId})`} />
-                        </svg>
-                      ) : (
-                        <I
-                          className="block w-full h-full"
-                          width={bulletIconSize as any}
-                          height={bulletIconSize as any}
-                          stroke={`url(#${gradId})`}
-                          fill="none"
-                          strokeWidth={bulletIconStroke as any}
-                          vectorEffect="non-scaling-stroke"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          style={{ shapeRendering: 'geometricPrecision' }}
-                        >
-                          <defs>
-                            <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stopColor={chapter.slug === 'risks' ? 'var(--color-accent-2)' : 'var(--color-accent)'} />
-                              <stop offset="100%" stopColor={'var(--color-accent-3)'} />
-                            </linearGradient>
-                          </defs>
-                        </I>
-                      )}
-                    </motion.i>
-                  );
-                })()}
-                <span>{b}</span>
-              </motion.li>
-            ))}
-          </ul>
-        )}
+                            style={{ shapeRendering: 'geometricPrecision' }}
+                          >
+                            <defs>
+                              <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor={chapter.slug === 'risks' ? 'var(--color-accent-2)' : 'var(--color-accent)'} />
+                                <stop offset="100%" stopColor={'var(--color-accent-3)'} />
+                              </linearGradient>
+                            </defs>
+                          </I>
+                        )}
+                      </motion.i>
+                    );
+                  })()}
+                  <span>{b}</span>
+                </motion.li>
+              ))}
+            </motion.ul>
+          );
+        })()}
       </div>
 
       {/* Mini KPI-Karten für Finance / Traction */}
-      {(financeKpis.length > 0 || tractionKpis.length > 0) && (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {kpiCards.length === 0 && (financeKpis.length > 0 || tractionKpis.length > 0) && (
+        <motion.div
+          className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+          variants={kpiContainerVariants}
+          initial="hidden"
+          whileInView="show"
+          viewport={PITCH_VIEWPORT}
+        >
           {(financeKpis.length > 0 ? financeKpis : tractionKpis).map((k, i) => (
             <motion.div
               key={`${k.label}-${i}`}
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-30% 0px -55% 0px" }}
-              transition={{ ...defaultTransition, delay: Math.min(i * 0.06, 0.24) }}
-              whileHover={{ y: -2, scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-           >
-              <Card className="kpi-card kpi-card--spacious kpi-card--hairline rounded-2xl bg-[--color-surface]/70">
-                <div className="kpi-card-content p-4 md:p-5 text-center">
-                  <div className="kpi-card-header text-[10px] md:text-[11px] tracking-wide uppercase text-[--color-foreground] opacity-80">{k.label}</div>
-                  <div className="kpi-value-row font-semibold [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums]">
-                    <span className="kpi-value">{k.value}</span>
-                  </div>
-                  {k.sub ? (<div className="kpi-sub">{k.sub}</div>) : null}
-                </div>
-              </Card>
+              variants={kpiItemVariants}
+              className="rounded-2xl bg-[--color-surface]/70 ring-1 ring-[--color-border-subtle] p-4"
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="text-[11px] tracking-wide uppercase text-[--color-foreground-muted]">{k.label}</div>
+              </div>
+              <div className="text-[15px] md:text-[16px] font-semibold [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums]">
+                {k.value}
+              </div>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       <motion.div
@@ -1426,6 +1476,7 @@ function ChapterSection({ chapter, index, total, messages, locale }: {
           </motion.span>
         </Link>
       </motion.div>
+      </ElegantCard>
     </Reveal>
   );
 }

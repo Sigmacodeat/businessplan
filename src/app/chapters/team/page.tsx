@@ -7,7 +7,11 @@ import InViewFade from '@/components/animation/InViewFade';
 import Link from 'next/link';
 import { Percent, Clock, Rocket, LineChart, Linkedin, Globe, Mail } from 'lucide-react';
 import TableSimple from '@/components/ui/TableSimple';
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import MiniDonut from '@/components/charts/MiniDonut';
+import MiniBarChart from '@/components/chapters/timeline/MiniBarChart';
+import LineChartAnimated from '@/components/charts/LineChartAnimated';
+import { CardTitle } from '@/components/ui/card';
+import ElegantCard from '@/components/ui/ElegantCard';
 import { NumberedList, NumberedItem } from '@components/chapters/NumberedList';
 
 export const dynamic = 'force-dynamic';
@@ -58,7 +62,7 @@ export default async function TeamPage() {
   return (
     <div id="chapter-content" className="space-y-8">
       <div className="prose prose-sm max-w-none [font-feature-settings:'ss01','ss02','liga','clig','tnum']">
-        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong] text-[clamp(18px,2vw,22px)]">{chapterTitle}</h1>
+        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong]">{chapterTitle}</h1>
 
         {/* Summary / CTA nah an den Anfang für besseren roten Faden */}
         {summary && (
@@ -83,8 +87,7 @@ export default async function TeamPage() {
               {/* Kurzprofil-Karten der Führung / Gründer */}
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center">
                 <InViewFade as="div" delay={0.02}>
-                <Card elevated={false} className="bg-[--color-surface] rounded-2xl ring-1 ring-[--color-border-subtle]/50 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:bg-[--color-surface]/95">
-                  <CardContent className="py-5 md:py-6">
+                <ElegantCard className="mx-auto w-full max-w-[520px]" innerClassName="rounded-[14px] bg-[--color-surface] p-5 md:p-6">
                     <div className="flex items-center gap-4">
                       <div className="h-11 w-11 rounded-full bg-gradient-to-br from-[--color-surface-2] to-[--color-surface] ring-1 ring-[--color-border-subtle]/60 shadow-inner flex items-center justify-center text-[12px] font-medium text-[--color-foreground]" aria-hidden="true" role="presentation">MM</div>
                       <div>
@@ -127,12 +130,10 @@ export default async function TeamPage() {
                         </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                </ElegantCard>
                 </InViewFade>
                 <InViewFade as="div" delay={0.055}>
-                <Card elevated={false} className="bg-[--color-surface] rounded-2xl ring-1 ring-[--color-border-subtle]/50 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:bg-[--color-surface]/95">
-                  <CardContent className="py-5 md:py-6">
+                <ElegantCard className="mx-auto w-full max-w-[520px]" innerClassName="rounded-[14px] bg-[--color-surface] p-5 md:p-6">
                     <div className="flex items-center gap-4">
                       <div className="h-11 w-11 rounded-full bg-gradient-to-br from-[--color-surface-2] to-[--color-surface] ring-1 ring-[--color-border-subtle]/60 shadow-inner flex items-center justify-center text-[12px] font-medium text-[--color-foreground]" aria-hidden="true" role="presentation">IM</div>
                       <div>
@@ -175,12 +176,10 @@ export default async function TeamPage() {
                         </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                </ElegantCard>
                 </InViewFade>
                 <InViewFade as="div" delay={0.09}>
-                <Card elevated={false} className="bg-[--color-surface] rounded-2xl ring-1 ring-[--color-border-subtle]/50 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:bg-[--color-surface]/95">
-                  <CardContent className="py-5 md:py-6">
+                <ElegantCard className="mx-auto w-full max-w-[520px]" innerClassName="rounded-[14px] bg-[--color-surface] p-5 md:p-6">
                     <div className="flex items-center gap-4">
                       <div className="h-11 w-11 rounded-full bg-gradient-to-br from-[--color-surface-2] to-[--color-surface] ring-1 ring-[--color-border-subtle]/60 shadow-inner flex items-center justify-center text-[12px] font-medium text-[--color-foreground]" aria-hidden="true" role="presentation">AM</div>
                       <div>
@@ -223,8 +222,7 @@ export default async function TeamPage() {
                         </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                </ElegantCard>
                 </InViewFade>
               </div>
             </section>
@@ -237,46 +235,38 @@ export default async function TeamPage() {
         <InViewFade as="section" delay={0.065} aria-labelledby="operating-model-heading">
           <h3 id="operating-model-heading" className="not-prose text-[14px] md:text-[16px] font-medium mb-2 text-[--color-foreground]">{`${sub()} – ${tBp('headings.teamOrg')}`}</h3>
           <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-6xl mx-auto">
-            <Card elevated={false} className="bg-[--color-surface] rounded-2xl ring-1 ring-[--color-border-subtle]/40">
-              <CardContent className="py-3.5 md:py-4.5">
+            <ElegantCard className="h-full" innerClassName="rounded-[14px] bg-[--color-surface] p-4 md:p-5">
                 <CardTitle className="text-[13.5px] md:text-base tracking-tight">{tBp('headings.teamOrgCoreEngineering')}</CardTitle>
                 <NumberedList>
                   <NumberedItem num={`${chapterIndex}.4.1`}>AI/Robotik (Perception, Planning, Policies)</NumberedItem>
                   <NumberedItem num={`${chapterIndex}.4.2`}>Controls/Execution (Controller, HW‑Abstraktion)</NumberedItem>
                   <NumberedItem num={`${chapterIndex}.4.3`}>Safety (Guardrails, Evaluierungen)</NumberedItem>
                 </NumberedList>
-              </CardContent>
-            </Card>
-            <Card elevated={false} className="bg-[--color-surface] rounded-2xl ring-1 ring-[--color-border-subtle]/40">
-              <CardContent className="py-3.5 md:py-4.5">
+            </ElegantCard>
+            <ElegantCard className="h-full" innerClassName="rounded-[14px] bg-[--color-surface] p-4 md:p-5">
                 <CardTitle className="text-[13.5px] md:text-base tracking-tight">{tBp('headings.teamOrgPlatformCloud')}</CardTitle>
                 <NumberedList>
                   <NumberedItem num={`${chapterIndex}.4.4`}>Policy‑Hub, Tele‑Assist, Observability</NumberedItem>
                   <NumberedItem num={`${chapterIndex}.4.5`}>Edge &lt;10ms, Canary‑Rollouts, CI/CD</NumberedItem>
                   <NumberedItem num={`${chapterIndex}.4.6`}>Data/Telemetry, Compliance/Provenienz</NumberedItem>
                 </NumberedList>
-              </CardContent>
-            </Card>
-            <Card elevated={false} className="bg-[--color-surface] rounded-2xl ring-1 ring-[--color-border-subtle]/40">
-              <CardContent className="py-3.5 md:py-4.5">
+            </ElegantCard>
+            <ElegantCard className="h-full" innerClassName="rounded-[14px] bg-[--color-surface] p-4 md:p-5">
                 <CardTitle className="text-[13.5px] md:text-base tracking-tight">{tBp('headings.teamOrgProduct')}</CardTitle>
                 <NumberedList>
                   <NumberedItem num={`${chapterIndex}.4.7`}>App‑Store & SDK (DX, Templates)</NumberedItem>
                   <NumberedItem num={`${chapterIndex}.4.8`}>Roadmap, Priorisierung, UX</NumberedItem>
                   <NumberedItem num={`${chapterIndex}.4.9`}>Partner‑Enablement, Docs</NumberedItem>
                 </NumberedList>
-              </CardContent>
-            </Card>
-            <Card elevated={false} className="bg-[--color-surface] rounded-2xl ring-1 ring-[--color-border-subtle]/40">
-              <CardContent className="py-3.5 md:py-4.5">
+            </ElegantCard>
+            <ElegantCard className="h-full" innerClassName="rounded-[14px] bg-[--color-surface] p-4 md:p-5">
                 <CardTitle className="text-[13.5px] md:text-base tracking-tight">{tBp('headings.teamOrgGtmPartnerships')}</CardTitle>
                 <NumberedList>
                   <NumberedItem num={`${chapterIndex}.4.10`}>Design‑Partner, OEM/Integrator</NumberedItem>
                   <NumberedItem num={`${chapterIndex}.4.11`}>SLAs, Demos, Referenzen</NumberedItem>
                   <NumberedItem num={`${chapterIndex}.4.12`}>Rev‑Share, Developer‑Programm</NumberedItem>
                 </NumberedList>
-              </CardContent>
-            </Card>
+            </ElegantCard>
           </div>
         </InViewFade>
 
@@ -321,6 +311,23 @@ export default async function TeamPage() {
 
         <InViewFade as="section" delay={0.11} aria-labelledby="team-plan-heading">
           <h3 id="team-plan-heading" className="not-prose text-[14px] md:text-[16px] font-medium mb-2 text-[--color-foreground]">{`${sub()} – ${tBp('headings.teamPlan')}`}</h3>
+          {/* Headcount-Trend (aus ftePlan) */}
+          {Array.isArray(ftePlan) && ftePlan.length > 0 && (
+            <div className="not-prose mb-4">
+              <LineChartAnimated
+                data={ftePlan.map((r) => ({ label: String(r.year), value: Number(String(r.teamSize).replace(/[^0-9.\-]/g, '')) || 0 }))}
+                width={720}
+                height={220}
+                ariaLabel={locale.startsWith('de') ? 'Teamgröße Verlauf' : 'Headcount trend'}
+                showArea
+                showPoints
+                yTicksCount={4}
+                padding={{ top: 12, right: 12, bottom: 22, left: 34 }}
+                tooltipFormatter={(label, value) => `${label} • ${value} FTE`}
+                responsive
+              />
+            </div>
+          )}
           {/* Konsolidierte Rollen-/Fokus-Tabelle (redundante Aufzählungen entfernt) */}
           {Array.isArray(ftePlan) && ftePlan.length > 0 && (
             <div className="mt-7 max-w-5xl mx-auto rounded-2xl bg-[--color-surface]/60 ring-1 ring-[--color-border-subtle]/40 p-3.5 md:p-5" aria-label="Teamplan – Tabelle">
@@ -346,24 +353,63 @@ export default async function TeamPage() {
           {/* ESOP KPI-Karten */}
           {Array.isArray(esopDetails) && esopDetails.length > 0 && (
             <div className="mt-6 mx-auto max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-7 justify-items-center">
-              {[
+              {[ 
                 { title: 'Pool', value: '12–15%', sub: 'Initial 12%, erweiterbar', Icon: Percent },
                 { title: 'Vesting', value: '4y / 1y Cliff', sub: 'Monatlich danach', Icon: Clock },
                 { title: 'Acceleration', value: '50% Double‑Trigger', sub: 'CoC + Kündigung o.G.', Icon: Rocket },
                 { title: 'FMV', value: 'jährlich (409A‑EU)', sub: 'Strike = FMV', Icon: LineChart },
               ].map((k, i) => (
                 <InViewFade as="div" key={i} delay={0.02 + i * 0.035}>
-                  <Card elevated={false} className="kpi-card kpi-card--compact kpi-card--hairline mx-auto w-full max-w-[360px] bg-[--color-surface] rounded-2xl ring-1 ring-[--color-border-subtle]/40 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:bg-[--color-surface]/95">
-                    <CardContent className="kpi-card-content text-center py-6 md:py-7 px-5">
+                  <ElegantCard className="mx-auto w-full max-w-[360px]" innerClassName="text-center rounded-[14px] bg-[--color-surface] py-6 md:py-7 px-5">
                       <div className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-[--color-surface-2] ring-1 ring-[--color-border-subtle]/40">
                         <k.Icon className="h-5.5 w-5.5 text-[--color-foreground]" aria-hidden />
                       </div>
                       <CardTitle className="text-[13.5px] md:text-sm text-[--color-foreground-muted]">{k.title}</CardTitle>
+                      {/* Mini-Chart Visual unter dem Titel */}
+                      <div className="kpi-visual my-3">
+                        {k.title === 'Pool' ? (
+                          <MiniDonut value={0.13} color="#22c55e" bg="rgba(34,197,94,0.12)" ariaLabel="ESOP Pool utilization" />
+                        ) : k.title === 'Vesting' ? (
+                          <MiniBarChart
+                            series={[0, 25, 50, 75, 100]}
+                            height={90}
+                            color="#3b82f6"
+                            ariaLabel="Vesting schedule"
+                            yTicksCount={3}
+                            showGrid
+                            xLabels={[locale.startsWith('de') ? 'Cliff' : 'Cliff', 'Y2', 'Y3', 'Y4', 'Full']}
+                            valueFormatter={(v) => `${v}%`}
+                          />
+                        ) : k.title === 'Acceleration' ? (
+                          <MiniBarChart
+                            series={[0, 0, 50]}
+                            height={90}
+                            color="#f59e0b"
+                            ariaLabel="Acceleration policy"
+                            yTicksCount={2}
+                            showGrid
+                            xLabels={[locale.startsWith('de') ? 't0' : 't0', 'CoC', 'Double']}
+                            valueFormatter={(v) => `${v}%`}
+                          />
+                        ) : (
+                          <LineChartAnimated
+                            data={[{label:'Y0',value:1},{label:'Y1',value:1.15},{label:'Y2',value:1.3},{label:'Y3',value:1.5}]}
+                            width={360}
+                            height={110}
+                            ariaLabel={locale.startsWith('de') ? 'FMV Verlauf' : 'FMV trend'}
+                            showArea
+                            showPoints
+                            yTicksCount={3}
+                            padding={{ top: 8, right: 8, bottom: 18, left: 30 }}
+                            tooltipFormatter={(label, value) => `${label} • ${value.toFixed(2)}x`}
+                            responsive
+                          />
+                        )}
+                      </div>
                       <div className="kpi-value-row mt-2.5 text-[28px] md:text-[34px] font-semibold tracking-tight text-gradient-subtle kpi-value">{k.value}</div>
                       <div className="mx-auto mt-5 h-px w-9/12 bg-[--color-border-subtle]/20"></div>
                       <div className="kpi-sub mt-3.5 text-[11px] md:text-xs text-[--color-foreground-muted]">{k.sub}</div>
-                    </CardContent>
-                  </Card>
+                  </ElegantCard>
                 </InViewFade>
               ))}
             </div>

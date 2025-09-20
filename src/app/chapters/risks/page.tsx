@@ -9,7 +9,7 @@ import MiniDonut from '@/components/charts/MiniDonut';
 import MiniBar from '@/components/charts/MiniBar';
 import MiniSparkline from '@/components/charts/MiniSparkline';
 import { getChapterTheme } from '@/app/chapters/chapterTheme';
-import { Card } from '@/components/ui/card';
+import ElegantCard from '@/components/ui/ElegantCard';
 // Icons entfernt – aktuell nicht genutzt
 
 export const dynamic = 'force-dynamic';
@@ -41,7 +41,7 @@ export default async function RiskPage() {
   return (
     <div className="space-y-8">
       <div className="prose prose-sm max-w-none [font-feature-settings:'ss01','ss02','liga','clig','tnum']">
-        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong] text-[clamp(18px,2vw,22px)]">{chapterTitle}</h1>
+        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong]">{chapterTitle}</h1>
 
         {/* KPI-Stat-Karten (Risks) – optional, mit defensiven Fallbacks analog Business Model */}
         {(() => {
@@ -77,54 +77,63 @@ export default async function RiskPage() {
             <div className="not-prose mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 items-stretch">
               {cards.map((s, idx) => (
                 <InViewFade key={`${String(s.label)}-${idx}`} delay={idx * 0.05} className="h-full">
-                  <Card className="kpi-card kpi-card--spacious kpi-card--hairline h-full bg-transparent shadow-none hover:shadow-none transition-all duration-200">
-                    <div className="kpi-card kpi-card--bm relative h-full rounded-2xl">
-                      <div className="kpi-card-content p-3 md:p-4 pb-6 md:pb-7">
-                        <div className="flex items-center gap-2 text-[10px] md:text-[11px] font-medium tracking-wide uppercase mb-2 text-[--color-foreground]">
-                          <span>{s.label}</span>
-                        </div>
-                        <div className="mb-3 kpi-visual">
-                          {s.chart === 'bar' ? (
-                            <MiniBar
-                              data={[24, 30, 28, 26, 22]}
-                              color={theme.warning}
-                              bg={`${theme.warning}15`}
-                              delay={0.12 + idx * 0.08}
-                              duration={3.2}
-                              className="w-full h-4"
-                            />
-                          ) : s.chart === 'spark' ? (
-                            <MiniSparkline
-                              data={[40, 44, 46, 49, 52]}
-                              height={16}
-                              delay={0.12 + idx * 0.08}
-                              duration={3.2}
-                              className="w-full"
-                              colorStart={theme.info}
-                              colorEnd={theme.primary}
-                              showArea={false}
-                              showDot
-                            />
-                          ) : (
-                            <MiniDonut
-                              value={0.72}
-                              color={theme.primary}
-                              bg={`${theme.primary}20`}
-                              delay={0.12 + idx * 0.08}
-                              duration={3.2}
-                              className="h-4"
-                            />
-                          )}
-                        </div>
-                        <div className="text-center space-y-1">
-                          <div className="kpi-value-row font-bold text-[--color-foreground-strong] [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums]">
-                            <span className="whitespace-normal break-words leading-tight" title={String(s.value)}>{String(s.value)}</span>
-                          </div>
-                          <div className="kpi-sub one-line">{s.sub}</div>
-                        </div>
+                  <ElegantCard
+                    className="h-full"
+                    innerClassName="relative h-full rounded-[12px] bg-[--color-surface] p-4 md:p-5 lg:p-6"
+                    ariaLabel={`${s.label} KPI Card`}
+                    role="group"
+                  >
+                    <div className="text-center">
+                      <div className="text-[10px] md:text-[11px] tracking-wide uppercase mb-2 text-[--color-foreground-muted]">
+                        <span>{s.label}</span>
                       </div>
+                      <div className="mb-3 kpi-visual">
+                        {s.chart === 'bar' ? (
+                          <MiniBar
+                            data={[24, 30, 28, 26, 22]}
+                            color={theme.warning}
+                            bg={`${theme.warning}15`}
+                            delay={0.12 + idx * 0.08}
+                            duration={3.2}
+                            className="w-full h-4"
+                          />
+                        ) : s.chart === 'spark' ? (
+                          <MiniSparkline
+                            data={[40, 44, 46, 49, 52]}
+                            height={16}
+                            delay={0.12 + idx * 0.08}
+                            duration={3.2}
+                            className="w-full"
+                            colorStart={theme.info}
+                            colorEnd={theme.primary}
+                            showArea={false}
+                            showDot
+                          />
+                        ) : (
+                          <MiniDonut
+                            value={0.72}
+                            gradient
+                            colorStart={theme.primary}
+                            colorEnd={theme.info}
+                            bg={`${theme.primary}20`}
+                            strokeWidth={3.5}
+                            size={24}
+                            glow
+                            showValue
+                            valueColor={"var(--color-foreground)"}
+                            delay={0.12 + idx * 0.08}
+                            duration={1.6}
+                            className="mx-auto"
+                          />
+                        )}
+                      </div>
+                      <div className="kpi-value-row [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums]">
+                        <span className="whitespace-normal break-words" title={String(s.value)}>{String(s.value)}</span>
+                      </div>
+                      <div className="mx-auto mt-2 h-px w-8/12 bg-[--color-border-subtle]/25" aria-hidden />
+                      <div className="mt-1.5 text-[12px] md:text-[12.5px] text-[--color-foreground] opacity-85 one-line">{s.sub}</div>
                     </div>
-                  </Card>
+                  </ElegantCard>
                 </InViewFade>
               ))}
             </div>

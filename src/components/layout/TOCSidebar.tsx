@@ -41,6 +41,7 @@ export default function TOCSidebar({ items, title }: { items: TocItem[]; title?:
   const [expanded, setExpanded] = useLocalStorage<boolean>("toc-expanded", true);
   const headingId = useId();
   const asideRef = useRef<HTMLElement | null>(null);
+  const [statusMsg, setStatusMsg] = useState<string>("");
   // Width is controlled via Tailwind utility classes below
 
   // Helper: detect if an element is an editable control to avoid stealing shortcuts
@@ -72,6 +73,12 @@ export default function TOCSidebar({ items, title }: { items: TocItem[]; title?:
     // run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Live-Region: Status-Ansage bei Öffnen/Schließen
+  useEffect(() => {
+    const msg = expanded ? "Inhaltsverzeichnis geöffnet" : "Inhaltsverzeichnis geschlossen";
+    setStatusMsg(msg);
+  }, [expanded]);
 
   // Collapse/Expand via Outside-Click & Keyboard (Esc / Alt+Arrows)
   useEffect(() => {
@@ -116,6 +123,8 @@ export default function TOCSidebar({ items, title }: { items: TocItem[]; title?:
   // Unified aside with smooth width/opacity transitions + persistent edge tab toggle
   return (
     <>
+      {/* Live-Region für Screenreader: kündigt Öffnen/Schließen an */}
+      <div role="status" aria-live="polite" className="sr-only">{statusMsg}</div>
       <aside
         id="toc-panel"
         aria-labelledby={`toc-title-${headingId}`}

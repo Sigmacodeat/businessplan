@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState, useId } from "react";
+import { scrollToAnchor, getEffectiveTopOffset } from "@/lib/scroll";
 import { useTranslations } from "next-intl";
 
 export type TocItem = {
@@ -71,18 +72,14 @@ export default function TOC({ items, title, showTitle = true, compact = false, d
     };
   }, [ids, disableScrollSpy]);
 
-  // Initial zu Anker scrollen (mit Header-Offset) und Hash-Änderungen behandeln
+  // Initial zu Anker scrollen (mit intelligentem Header-Offset) und Hash-Änderungen behandeln
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-
     const scrollToHash = () => {
       const id = window.location.hash?.slice(1);
       if (!id) return;
-      const el = document.getElementById(id);
-      if (!el) return;
-      const y = el.getBoundingClientRect().top + window.scrollY - headerOffset;
-      window.scrollTo({ top: y, behavior: prefersReduced ? 'auto' : 'smooth' });
+      // headerOffset aus Props hat Vorrang, sonst auto ermitteln
+      scrollToAnchor(id, { headerOffset, updateHash: false });
     };
 
     // initial
@@ -192,14 +189,10 @@ export default function TOC({ items, title, showTitle = true, compact = false, d
                   }
                   onClick={(e) => {
                     if (typeof window === "undefined") return;
-                    const id = parent.id;
-                    const el = document.getElementById(id);
-                    if (!el) return;
                     e.preventDefault();
-                    const y = el.getBoundingClientRect().top + window.scrollY - headerOffset;
-                    window.history.pushState(null, "", `#${id}`);
-                    window.scrollTo({ top: y, behavior: "smooth" });
-                    setActiveId(id);
+                    const id = parent.id;
+                    const ok = scrollToAnchor(id, { headerOffset });
+                    if (ok) setActiveId(id);
                   }}
                 >
                   <div className={`flex ${compact ? "flex-col items-start gap-0" : "items-center justify-between"} min-w-0`}>
@@ -243,14 +236,10 @@ export default function TOC({ items, title, showTitle = true, compact = false, d
                           }
                           onClick={(e) => {
                             if (typeof window === "undefined") return;
-                            const id = child.id;
-                            const el = document.getElementById(id);
-                            if (!el) return;
                             e.preventDefault();
-                            const y = el.getBoundingClientRect().top + window.scrollY - headerOffset;
-                            window.history.pushState(null, "", `#${id}`);
-                            window.scrollTo({ top: y, behavior: "smooth" });
-                            setActiveId(id);
+                            const id = child.id;
+                            const ok = scrollToAnchor(id, { headerOffset });
+                            if (ok) setActiveId(id);
                           }}
                         >
                           {/* Bullet/Dot for deeper levels */}

@@ -55,11 +55,6 @@ export const metadata: Metadata = {
     description: 'Business Plan Application',
     creator: '@yourtwitter'
   },
-  icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon-16x16.png',
-    apple: '/apple-touch-icon.png'
-  },
   manifest: '/manifest.webmanifest',
   robots: {
     index: false,

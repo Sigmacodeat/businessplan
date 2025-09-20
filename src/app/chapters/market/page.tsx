@@ -1,5 +1,5 @@
 // PDF-like layout: no animated reveal
-import { Card } from '@/components/ui/card';
+import ElegantCard from '@/components/ui/ElegantCard';
 import MiniBar from '@/components/charts/MiniBar';
 import MiniDonut from '@/components/charts/MiniDonut';
 import MiniSparkline from '@/components/charts/MiniSparkline';
@@ -194,76 +194,83 @@ export default async function MarketAnalysisPage() {
   return (
     <div className="space-y-6 md:space-y-8">
       <div className="prose prose-sm max-w-none [font-feature-settings:'ss01','ss02','liga','clig','tnum']">
-        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong] text-[clamp(18px,2vw,22px)]">{chapterTitle}</h1>
+        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong]">{chapterTitle}</h1>
 
         {/* KPI-Stat-Karten (Market) – 1:1 Optik wie Kapitel 2 */}
         <SectionDelay delayMs={0}>
           <div className="not-prose mt-6 md:mt-8 grid gap-4 md:gap-5 sm:grid-cols-2 lg:grid-cols-4 items-stretch">
             {kpiCards.map((s, idx) => (
               <InViewFade key={`${String(s.label)}-${idx}`} delay={idx * 0.05} className="h-full">
-                <Card className="kpi-card kpi-card--compact kpi-card--hairline h-full bg-transparent shadow-none hover:shadow-none transition-all duration-200">
-                  <div className="kpi-card kpi-card--bm relative h-full rounded-2xl">
-                    <div className="kpi-card-content p-3 md:p-3.5">
-                      <div className="flex items-center gap-2 text-[10px] md:text-[11px] font-medium tracking-wide uppercase mb-2 text-[--color-foreground] dark:text-white">
-                        {(() => {
-                          const Icon = idx === 0 ? TrendingUp : idx === 1 ? BarChart3 : idx === 2 ? PieChart : Globe2;
-                          return <Icon className="h-3.5 w-3.5 text-[--color-foreground-muted]" aria-hidden />;
-                        })()}
-                        <span>{s.label}</span>
-                      </div>
-                      <div className="mb-2.5 kpi-visual">
-                        {/* dezente Mini‑Visuals (Sparkline/Bar/Donut) – generisch, ohne Business‑Bias */}
-                        {idx === 1 ? (
-                          <MiniBar
-                            data={[10, 16, 20, 24, 29]}
-                            color={theme.warning}
-                            bg={theme.warning ? `${theme.warning}15` : 'rgba(245,158,11,0.08)'}
+                <ElegantCard
+                  className="h-full"
+                  innerClassName="relative h-full min-h-[156px] rounded-[12px] bg-[--color-surface] p-4 md:p-5 lg:p-6"
+                  ariaLabel={`${s.label} KPI Card`}
+                  role="group"
+                >
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 text-[10px] md:text-[11px] tracking-wide uppercase mb-2 text-[--color-foreground-muted]">
+                      {(() => {
+                        const Icon = idx === 0 ? TrendingUp : idx === 1 ? BarChart3 : idx === 2 ? PieChart : Globe2;
+                        return <Icon className="h-3.5 w-3.5 text-[--color-foreground-muted]" aria-hidden />;
+                      })()}
+                      <span>{s.label}</span>
+                    </div>
+                    <div className="mb-3.5 kpi-visual">
+                      {idx === 1 ? (
+                        <MiniBar
+                          data={[10, 16, 20, 24, 29]}
+                          color={theme.warning}
+                          bg={theme.warning ? `${theme.warning}15` : 'rgba(245,158,11,0.08)'}
+                          delay={getKpiDelay(idx)}
+                          duration={KPI_ANIM_DURATION}
+                          className="w-full"
+                          height={KPI_BAR_HEIGHT}
+                        />
+                      ) : idx === 0 || idx === 2 ? (
+                        <MiniSparkline
+                          data={idx === 0 ? [20, 23, 25, 27, 30] : [1, 2, 4, 8, 16]}
+                          height={KPI_SPARK_HEIGHT}
+                          delay={getKpiDelay(idx)}
+                          duration={KPI_ANIM_DURATION}
+                          className="w-full"
+                          colorStart={theme.success}
+                          colorEnd={theme.primary}
+                          showArea={false}
+                          showDot
+                        />
+                      ) : (
+                        <div className="w-full flex items-center justify-center">
+                          <MiniDonut
+                            value={Number.isFinite(euPct) ? (euPct / 100) : 0.5}
+                            gradient
+                            colorStart={theme.primary}
+                            colorEnd={theme.info}
+                            glow
+                            showValue
+                            size={24}
+                            strokeWidth={3.5}
+                            bg={theme.primary ? `${theme.primary}20` : 'rgba(59,130,246,0.1)'}
                             delay={getKpiDelay(idx)}
-                            duration={KPI_ANIM_DURATION}
-                            className="w-full"
-                            height={KPI_BAR_HEIGHT}
+                            duration={1.6}
+                            className={KPI_DONUT_CLASS}
                           />
-                        ) : idx === 0 || idx === 2 ? (
-                          <MiniSparkline
-                            data={idx === 0 ? [20, 23, 25, 27, 30] : [1, 2, 4, 8, 16]}
-                            height={KPI_SPARK_HEIGHT}
-                            delay={getKpiDelay(idx)}
-                            duration={KPI_ANIM_DURATION}
-                            className="w-full"
-                            colorStart={theme.success}
-                            colorEnd={theme.primary}
-                            showArea={false}
-                            showDot
-                          />
-                        ) : (
-                          <div className="w-full flex items-center justify-center">
-                            <MiniDonut
-                              value={Number.isFinite(euPct) ? (euPct / 100) : 0.5}
-                              color={theme.primary}
-                              bg={theme.primary ? `${theme.primary}20` : 'rgba(59,130,246,0.1)'}
-                              delay={getKpiDelay(idx)}
-                              duration={KPI_ANIM_DURATION}
-                              className={KPI_DONUT_CLASS}
-                            />
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-center space-y-1">
-                        <div className="kpi-value-row font-bold text-slate-900 dark:text-white [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums]">
-                          <span className="whitespace-normal break-words leading-tight" title={String(s.value)}>{String(s.value)}</span>
                         </div>
-                        <div className="kpi-sub opacity-80 flex items-center justify-center gap-1" title={s.sub as string}>
-                          <span className="one-line">{s.sub as string}</span>
-                          {idx === 3 && (
-                            <span className="ml-1 inline-flex items-center rounded-sm bg-[--color-surface] px-1 py-[1px] text-[9px] text-[--color-foreground-muted] ring-1 ring-black/5">
-                              {locale.startsWith('de') ? 'indikativ' : 'indicative'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      )}
+                    </div>
+                    <div className="kpi-value-row [font-feature-settings:'tnum'] [font-variant-numeric:tabular-nums]">
+                      <span className="whitespace-normal break-words" title={String(s.value)}>{String(s.value)}</span>
+                    </div>
+                    <div className="mx-auto mt-2 h-px w-8/12 bg-[--color-border-subtle]/25" aria-hidden />
+                    <div className="mt-1.5 text-[12px] md:text-[12.5px] text-[--color-foreground] opacity-85 flex items-center justify-center gap-1" title={s.sub as string}>
+                      <span className="one-line">{s.sub as string}</span>
+                      {idx === 3 && (
+                        <span className="ml-1 inline-flex items-center rounded-sm bg-[--color-surface] px-1 py-[1px] text-[9px] text-[--color-foreground-muted] ring-1 ring-black/5">
+                          {locale.startsWith('de') ? 'indikativ' : 'indicative'}
+                        </span>
+                      )}
                     </div>
                   </div>
-                </Card>
+                </ElegantCard>
               </InViewFade>
             ))}
           </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export type SectionCardProps = {
   title?: React.ReactNode;
@@ -27,30 +26,26 @@ export default function SectionCard({
 }: SectionCardProps) {
   const headerId = id ? `${id}-title` : undefined;
   return (
-    <Card
+    <div
       id={id}
       aria-labelledby={headerId}
       tabIndex={-1}
-      className={[
-        "SectionCard rounded-2xl bg-[--color-surface]/70 shadow-sm ring-1 ring-[--color-border-subtle]/50",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:ring-[--color-primary]",
-        "scroll-mt-24 mb-5 md:mb-7",
-        className || "",
-      ].join(" ")}
-    > 
+      className={["scroll-mt-24 subchapter-block", className || ""].join(" ")}
+      role="group"
+    >
       {title !== undefined ? (
-        <CardHeader className={["p-4 md:p-5", headerClassName || ""].join(" ")}> 
-          <CardTitle
+        <div className={["p-4 md:p-5", headerClassName || ""].join(" ")}> 
+          <div
             id={headerId}
-            className="not-prose text-[13px] md:text-[14px] leading-snug md:leading-normal font-semibold tracking-tight text-[--color-foreground]"
-          > 
+            className="not-prose subchapter-title"
+          >
             {title}
-          </CardTitle>
-        </CardHeader>
+          </div>
+        </div>
       ) : null}
-      <CardContent className={["p-4 md:p-5 pt-0", contentClassName || ""].join(" ")}> 
+      <div className={["p-4 md:p-5", title !== undefined ? "pt-0" : "", contentClassName || ""].join(" ")}> 
         {children}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

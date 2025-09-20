@@ -5,6 +5,8 @@ import CoverPage from '@/components/document/CoverPage';
 import ClosingPage from '@/components/document/ClosingPage';
 import PrintTOC from '@/components/document/PrintTOC';
 import CompactChapterNav from '@/components/chapters/CompactChapterNav';
+import HashScroll from '@/components/navigation/HashScroll';
+import AutoAnchors from '@/components/navigation/AutoAnchors';
 
 export default async function ChaptersLayout(props: any) {
   const children: ReactNode = props?.children;
@@ -15,8 +17,12 @@ export default async function ChaptersLayout(props: any) {
   const currentChapter = !Number.isNaN(current) && current > 0 ? current : 1;
 
   return (
-    <section className="container-gutter py-6" aria-labelledby="chapters-heading" role="region">
+    <section className="container-gutter py-6 chapters-root" aria-labelledby="chapters-heading" role="region">
       <h2 id="chapters-heading" className="sr-only">Kapitelinhalt</h2>
+      {/* Pixelgenaues Scrollen zu Hash-Ankern (berücksichtigt Header-Offset) */}
+      <HashScroll headerOffset={56} />
+      {/* Ergänzt fehlende #id-Anker automatisch basierend auf chapters.config */}
+      <AutoAnchors chapterId={currentChapter} />
 
       {/* Layout-Hintergrund (nur Screen): subtiler Brand-Gradient */}
       <div className="relative">

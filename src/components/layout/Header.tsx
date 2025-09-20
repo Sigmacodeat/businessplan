@@ -6,7 +6,7 @@ import {usePathname} from "next/navigation";
 import { useEffect, useRef } from "react";
 import ThemeToggle from "../ui/ThemeToggle";
 import { buildLocalePath } from "@/i18n/path";
-import { Bot } from "lucide-react";
+import RobotIcon from "@/components/ui/RobotIcon";
 import LocaleLink from "@/components/navigation/LocaleLink";
 
 export default function Header() {
@@ -145,7 +145,7 @@ export default function Header() {
     <header role="banner" className="sticky top-0 z-50 backdrop-blur-md bg-background/95 dark:bg-background/95 supports-[backdrop-filter]:bg-background/90 dark:supports-[backdrop-filter]:bg-background/90 print:hidden">
       <div className="container-gutter flex h-14 sm:h-16 items-center justify-between">
         <LocaleLink href="/" className="flex items-center gap-1 sm:gap-2 font-semibold tracking-tight no-underline hover:no-underline focus:no-underline" aria-label={t("homeAria", { brand: t("brand") })}>
-          <Bot aria-hidden className="h-4 w-4 sm:h-5 sm:w-5 text-[--color-accent]" />
+          <RobotIcon size={20} strokeWidth={2} stroke="currentColor" className="text-[--color-accent]" />
           <span className="flex flex-col leading-tight items-start">
             <span className="text-[13px] sm:text-base font-semibold leading-none">{brandTitle}</span>
             <span className="text-[9px] sm:text-xs text-muted-foreground -mt-0.5 tracking-wide self-end text-right leading-none">{brandSubtitle}</span>

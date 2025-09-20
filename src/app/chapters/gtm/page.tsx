@@ -61,7 +61,7 @@ export default async function GoToMarketPage() {
   return (
     <div className="space-y-7 md:space-y-8">
       <div className="prose prose-sm max-w-none [font-feature-settings:'ss01','ss02','liga','clig','tnum']">
-        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong] text-[clamp(18px,2vw,22px)]">{chapterTitle}</h1>
+        <h1 className="section-title font-semibold tracking-tight leading-tight text-[--color-foreground-strong]">{chapterTitle}</h1>
         {/* Intro – verkäuferisch, fließender Text */}
         <InViewFade as="p" delay={0.05} duration={0.36} offsetY={10} easing="cubic-bezier(0.16, 1, 0.3, 1)" threshold={0.08} rootMargin="-12% 0px" className="text-[13px] md:text-[14px] leading-relaxed text-[--color-foreground] mb-2.5 md:mb-3">
           {locale.startsWith('de')
